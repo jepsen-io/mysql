@@ -113,30 +113,28 @@
 (defrecord Client [node conn initialized?]
   client/Client
   (open! [this test node]
-    (let [c (c/open test node)
-          ;c (j/with-logging c (fn log [op sql]
-          ;                      (info op sql)))
-          ]
+    (let [c (c/open test node)]
       (assoc this
              :node          node
              :conn          c
              :initialized?  (atom false))))
 
   (setup! [_ test]
+    (c/with-logging test [conn conn]
     (when (= (jepsen/primary test) node)
-      (dotimes [i (:table-count test default-table-count)]
-        (j/execute! conn
-                    [(str "create table if not exists " (table-name i)
-                          " (`system` int not null,
-                          id int not null,
-                          `value` int not null,
-                          primary key (`system`, id))")])
-        (j/execute! conn
-                    [(str "create index system_idx_" i " on " (table-name i)
-                          " (`system`)")])
-        ; Make sure we start fresh--in case we're using an existing
-        ; cluster and the DB automation isn't wiping the state for us.
-        (j/execute! conn [(str "delete from " (table-name i))]))))
+        (dotimes [i (:table-count test default-table-count)]
+          (j/execute! conn
+                      [(str "create table if not exists " (table-name i)
+                            " (`system` int not null,
+                            id int not null,
+                            `value` int not null,
+                            primary key (`system`, id))")])
+          (j/execute! conn
+                      [(str "create index system_idx_" i " on " (table-name i)
+                            " (`system`)")])
+          ; Make sure we start fresh--in case we're using an existing
+          ; cluster and the DB automation isn't wiping the state for us.
+          (j/execute! conn [(str "delete from " (table-name i))])))))
 
   (invoke! [this test {:keys [f value] :as op}]
     (let [[system value] value]
@@ -148,13 +146,14 @@
         :init (let [table-count (:table-count test default-table-count)]
                 (j/with-transaction [t conn
                                      {:isolation (:isolation test)}]
-                  (let [t t] ;(j/with-logging t (fn [id sql] (info "SQL" id (pr-str sql))))]
+                  (c/with-logging test [t t]
                     (doseq [[k v] value]
-                      (j/execute-one! t [(str "insert into "
-                                              (table-for table-count k)
-                                              " (`system`, id, `value`) values (?, ?, ?)")
-                                         system k v])))
-                  (assoc op :type :ok)))
+                      (j/execute-one!
+                        t [(str "insert into "
+                                (table-for table-count k)
+                                " (`system`, id, `value`) values (?, ?, ?)")
+                           system k v]))))
+                (assoc op :type :ok))
 
         ; await-init is just a :txn, but we don't want to let it be seen by the
         ; checker
@@ -165,12 +164,14 @@
                (let [txn       value
                      use-txn?  (< 1 (count txn))
                      txn'      (if use-txn?
-                                 ;(if true
-                                 (j/with-transaction [t conn
-                                                      {:isolation (:isolation test)}]
-                                   (let [t t] ;(j/with-logging t (fn [id sql] (info "SQL" id (pr-str sql))))]
-                                     (mapv (partial mop! t test system true) txn)))
-                                 (mapv (partial mop! conn test system false) txn))]
+                                 (j/with-transaction
+                                   [t conn {:isolation (:isolation test)}]
+                                   (c/with-logging test [t t]
+                                     (mapv (partial mop! t test system true)
+                                           txn)))
+                                 (c/with-logging test [conn conn]
+                                   (mapv (partial mop! conn test system false)
+                                         txn)))]
                  (assoc op
                         :type :ok
                         :value (independent/tuple system txn')))))))
@@ -271,22 +272,26 @@
 (defn sloppy-independent-checker
   "independent/checker is conservative and returns :valid? :unknown if any of
   the subhistories is unknown. Because we generate a ton of histories, it's OK
-  if a few are unknown--those at the end probably didn't run long enough to get
-  complete txn graphs."
+  if a few are unknown because of an empty transaction graph."
   [checker]
   (reify checker/Checker
     (check [this test history opts]
-      (let [res (checker/check (independent/checker checker) test history opts)
-            valids (frequencies (map :valid? (:results res)))
-            unknown-frac (/ (count (:unknown valids []))
-                            (count (:results res)))
-            unknown-frac 1
+      (let [res     (checker/check (independent/checker checker)
+                                   test history opts)
+            n       (count (:results res))
+            empty-n (->> (:results res)
+                         vals
+                         (filter (fn [res] (and (= :valid? :unknown)
+                                                (= (:anomaly-types res)
+                                                   [:empty-transaction-graph]))))
+                         count)
+            empty-frac (/ empty-n n)
             valid? (cond ; Any failure makes the whole test fail
                          (= false (:valid res))
                          false
 
-                         ; We're OK with up to 20% unknown
-                         (< unknown-frac 0.2)
+                         ; We're OK with up to 20% empty
+                         (< empty-frac 0.2)
                          true
 
                          ; Otherwise pass through
@@ -295,7 +300,7 @@
         (assoc res :valid? valid?)))))
 
 (defn workload
-  "A list append workload."
+  "A closed-predicate workload"
   [opts]
   {:generator (independent/concurrent-generator
                 (* 2 (count (:nodes opts)))

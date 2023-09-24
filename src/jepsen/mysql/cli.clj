@@ -137,10 +137,15 @@
     :default nil
     :parse-fn keyword]
 
+   [nil "--insert-only" "If set, tells certain workloads (e.g. closed-predicate) to perform only inserts."
+    :id :insert-only?]
+
    [nil "--key-count NUM" "Number of keys in active rotation."
     :default  10
     :parse-fn parse-long
     :validate [pos? "Must be a positive integer"]]
+
+   ["-l" "--log-sql" "If set, logs selected SQL statements to the console to aid in debugging"]
 
    [nil "--nemesis FAULTS" "A comma-separated list of nemesis faults to enable"
     :parse-fn parse-nemesis-spec

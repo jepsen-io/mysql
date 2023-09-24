@@ -16,6 +16,17 @@
 (def port 3306)
 (def db "jepsen")
 
+(defmacro with-logging
+  "Takes a test, a binding vector of [logging-conn-name jdbc-connection], and a
+  body. Evaluates body. If the test has (:log-sql test) set, binds conn-name
+  within body scope to log SQL statements to the console."
+  [test [conn-name conn] & body]
+  `(let [~conn-name (if (:log-sql ~test)
+                      (j/with-logging ~conn (fn ~'log [op# sql#]
+                                              (info op# (pr-str sql#))))
+                      ~conn)]
+     ~@body))
+
 (defn open
   "Opens a connection to the given node. Options
 
@@ -40,6 +51,12 @@
          spec  (if-let [pt (:prepare-threshold test)]
                  (assoc spec :prepareThreshold pt)
                  spec)
+         ; Can't do this here; logging objects can't be used for txns
+         ;spec  (if (:log-sql test)
+         ;        (j/with-logging spec
+         ;          (fn log [op sql]
+         ;            (info op (pr-str sql))))
+         ;        spec)
          ds    (j/get-datasource spec)
          conn  (j/get-connection ds)]
      conn)))
