@@ -1,14 +1,18 @@
 # jepsen.mysql
 
-A Clojure library designed to ... well, that part is up to you.
+Jepsen tests for MySQL and MariaDB.
 
 ## Usage
 
-FIXME
+Quickstart for a single-node test with closed-world predicates:
+
+```
+lein run test --db mysql --nodes n1 -w closed-predicate --concurrency 30n --rate 1000 --time-limit 120 -i serializable --nemesis none --key-count 40
+```
 
 ## License
 
-Copyright © 2023 FIXME
+Copyright © 2023 Jepsen, LLC
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
