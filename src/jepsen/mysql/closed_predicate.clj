@@ -277,32 +277,27 @@
   (reify checker/Checker
     (check [this test history opts]
       (let [res     (checker/check (independent/checker checker)
-                                   test history opts)
-            n       (count (:results res))
-            unknown (filter (fn [res]
-                              (= (:valid? res) :unknown))
-                            (:results res))
-
-            empty-txn (filter (fn [res]
-                                (= (:anomaly-types res)
-                                   [:empty-transaction-graph]))
-                              unknown)
-            _ (info :n n :unknown (count unknown) :empty (count empty-txn))
-            valid? (cond ; Any failure makes the whole test fail
-                         (= false (:valid res))
-                         false
-
-                         ; We're OK with up to 20% empty txn graphs so long as
-                         ; ALL of the unknown results are because of empty txn
-                         ; graphs
-                         (and (= (count unknown) (count empty-txn))
-                              (< (/ (count empty-txn) n) 0.2))
-                         true
-
-                         ; Otherwise pass through
-                         true
-                         (:valid? res))]
-        (assoc res :valid? valid?)))))
+                                   test history opts)]
+        (if (not= :unknown (:valid? res))
+          res
+          ; We have an unknown overall result...
+          (let [n (count (:results res))
+                unknown (filter (fn [res]
+                                  (= (:valid? res) :unknown))
+                                (:results res))
+                empty-txn (filter (fn [res]
+                                    (= (:anomaly-types res)
+                                       [:empty-transaction-graph]))
+                                  unknown)]
+            (info :n n :unknown (count unknown) :empty (count empty-txn))
+            ; We're OK with up to 20% empty txn graphs so long as
+            ; ALL of the unknown results are because of empty txn
+            ; graphs
+            (assoc res :valid?
+                   (if (and (= (count unknown) (count empty-txn))
+                            (< (/ (count empty-txn) n) 0.2))
+                     true
+                     (:valid? res)))))))))
 
 (defn workload
   "A closed-predicate workload"
