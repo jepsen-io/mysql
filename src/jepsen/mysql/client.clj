@@ -1,0 +1,87 @@
+(ns jepsen.mysql.client
+  "Helper functions for interacting with MySQL clients."
+  (:require [clojure.tools.logging :refer [info warn]]
+            [jepsen [client :as client]
+                    [util :as util]]
+            [next.jdbc :as j]
+            [next.jdbc.result-set :as rs]
+            [next.jdbc.sql.builder :as sqlb]
+            [slingshot.slingshot :refer [try+ throw+]])
+  (:import (java.sql Connection
+                     SQLTransactionRollbackException)
+           (com.mysql.cj.jdbc.exceptions MySQLTransactionRollbackException)))
+
+(def user "jepsen")
+(def password "jepsenpw")
+(def port 3306)
+(def db "jepsen")
+
+(defn open
+  "Opens a connection to the given node. Options
+
+    :db If nil, skips setting the DB name. Helpful for initial setup."
+  ([test node]
+   (open test node {}))
+  ([test node opts]
+   (let [spec  {;:dbtype    "mysql"
+                :dbtype    "mariadb"
+                :host      node
+                :port      port
+                :user      user
+                :password  password
+                "allowPublicKeyRetrieval" true}
+         spec  (if (contains? opts :db)
+                 (let [db (:db opts)]
+                   (if (nil? db)
+                     spec
+                     (assoc spec :dbname db)))
+                 ; Use default
+                 (assoc spec :dbname db))
+         spec  (if-let [pt (:prepare-threshold test)]
+                 (assoc spec :prepareThreshold pt)
+                 spec)
+         ds    (j/get-datasource spec)
+         conn  (j/get-connection ds)]
+     conn)))
+
+(defn set-transaction-isolation!
+  "Sets the transaction isolation level on a connection. Returns conn."
+  [conn level]
+  (.setTransactionIsolation
+    conn
+    (case level
+      :serializable     Connection/TRANSACTION_SERIALIZABLE
+      :repeatable-read  Connection/TRANSACTION_REPEATABLE_READ
+      :read-committed   Connection/TRANSACTION_READ_COMMITTED
+      :read-uncommitted Connection/TRANSACTION_READ_UNCOMMITTED))
+  conn)
+
+(defn close!
+  "Closes a connection."
+  [^java.sql.Connection conn]
+  (.close conn))
+
+(defn await-open
+  "Waits for a connection to node to become available, returning conn. Helpful
+  for starting up."
+  [test node]
+  (util/await-fn (fn attempt []
+                   (let [conn (open test node)]
+                     (try (j/execute-one! conn
+                                          ["create table if not exists jepsen_await (id int)"])
+                          conn
+                          ; TODO: catch duplicate table and also return conn
+                          )))
+                 {:retry-interval 1000
+                  :log-interval   60000
+                  :log-message    "Waiting for MySQL connection"
+                  :timeout        10000}))
+
+(defmacro with-errors
+  "Takes an operation and a body, turning known errors into :fail or :info ops."
+  [op & body]
+  `(try ~@body
+        (catch SQLTransactionRollbackException e#
+          (assoc ~op :type :fail, :error :rollback))
+        (catch MySQLTransactionRollbackException e#
+          (assoc ~op :type :fail, :error :rollback))))
