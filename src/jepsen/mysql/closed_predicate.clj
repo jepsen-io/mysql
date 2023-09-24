@@ -279,19 +279,24 @@
       (let [res     (checker/check (independent/checker checker)
                                    test history opts)
             n       (count (:results res))
-            empty-n (->> (:results res)
-                         vals
-                         (filter (fn [res] (and (= :valid? :unknown)
-                                                (= (:anomaly-types res)
-                                                   [:empty-transaction-graph]))))
-                         count)
-            empty-frac (/ empty-n n)
+            unknown (filter (fn [res]
+                              (= (:valid? res) :unknown))
+                            (:results res))
+
+            empty-txn (filter (fn [res]
+                                (= (:anomaly-types res)
+                                   [:empty-transaction-graph]))
+                              unknown)
+            _ (info :n n :unknown (count unknown) :empty (count empty-txn))
             valid? (cond ; Any failure makes the whole test fail
                          (= false (:valid res))
                          false
 
-                         ; We're OK with up to 20% empty
-                         (< empty-frac 0.2)
+                         ; We're OK with up to 20% empty txn graphs so long as
+                         ; ALL of the unknown results are because of empty txn
+                         ; graphs
+                         (and (= (count unknown) (count empty-txn))
+                              (< (/ (count empty-txn) n) 0.2))
                          true
 
                          ; Otherwise pass through
