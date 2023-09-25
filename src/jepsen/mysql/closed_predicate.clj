@@ -23,7 +23,7 @@
             [next.jdbc.sql.builder :as sqlb]
             [slingshot.slingshot :refer [try+ throw+]]))
 
-(def default-table-count 3)
+(def default-table-count 2)
 
 (defn table-name
   "Takes an integer and constructs a table name."
@@ -259,6 +259,19 @@
         ; Then do normal transactions.
         (ro-gen txns)))))
 
+(defn insert-fractured-reads-gen
+  "A simpler, hardcoded generator to minimally reproduce a fractured reads bug."
+  []
+  (->> (gen/mix
+         [; Reads
+          (repeat {:f :txn, :value [[:rp :true nil]]})
+          ; Writes
+          (->> (range 0 Long/MAX_VALUE 2)
+               (map (fn [i]
+                      {:f :txn, :value [[:insert i        i]
+                                        [:insert (inc i)  (inc i)]]})))])
+       (gen/limit 20)))
+
 (defn checker
   "Uses Elle to analyze predicate safety"
   [opts-]
@@ -306,7 +319,9 @@
                 (* 2 (count (:nodes opts)))
                 (range)
                 (fn [system]
-                  (gen opts)))
+                  (gen opts)
+                  ;(insert-fractured-reads-gen)
+                  ))
    ; Moar concurrency???
    ;:concurrency (* 10 (:concurrency opts))
    :checker (checker/compose

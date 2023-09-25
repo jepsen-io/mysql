@@ -11,7 +11,7 @@
                  [com.mysql/mysql-connector-j "8.1.0"]
                  [org.mariadb.jdbc/mariadb-java-client "3.2.0"]]
   :main jepsen.mysql.cli
-  :repl-options {:init-ns jepsen.mysql}
+  :repl-options {:init-ns jepsen.mysql.cli}
   :jvm-opts ["-Djava.awt.headless=true"
-             "-agentpath:/home/aphyr/yourkit/bin/linux-x86-64/libyjpagent.so=disablestacktelemetry,exceptions=disable,delay=1000"
+             ;"-agentpath:/home/aphyr/yourkit/bin/linux-x86-64/libyjpagent.so=disablestacktelemetry,exceptions=disable,delay=1000"
              "-server"])
