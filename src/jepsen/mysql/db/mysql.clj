@@ -34,7 +34,8 @@
        slurp
        (str/replace #"%IP%" (cn/ip node))
        (str/replace #"%SERVER_ID%" (str (inc (.indexOf (:nodes test) node))))
-       ; this should be mysqld for mysql
+       ; We include a mariadb header in our config file and delete it for
+       ; mysql, so the config options all live under mysql.
        (str/replace #"\[mariadb\]" "")
        ; Does not exist in mysql
        (str/replace #"log-basename.*\n" "")

@@ -6,6 +6,7 @@
 profiles.clj
 pom.xml
 pom.xml.asc
+.*.swp
 *.jar
 *.class
 /.lein-*

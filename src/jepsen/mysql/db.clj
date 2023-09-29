@@ -30,6 +30,10 @@
        (str/replace #"%IP%" (cn/ip node))
        (str/replace #"%SERVER_ID%" (str (inc (.indexOf (:nodes test) node))))
        (str/replace #"%REPLICA_PRESERVE_COMMIT_ORDER%" (:replica-preserve-commit-order test))
+       (str/replace #"%BINLOG_FORMAT%"
+                    (.toUpperCase (name (:binlog-format test))))
+       ; This option doesn't exist in Maria AFAICT
+       (str/replace #"replica-preserve-commit-order.*?\n" "")
        (cu/write-file! "/etc/mysql/mariadb.conf.d/99-jepsen.cnf")))
 
 (defn sql!
@@ -115,7 +119,7 @@
       (setup! [this test node]
         (install! test node)
         (configure! test node)
-        (c/su (c/exec :mysql_install_db))
+        (c/sudo :mysql (c/exec :mysql_install_db))
         (db/start! this test node)
         (make-db!)
         (jepsen/synchronize test)
