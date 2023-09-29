@@ -1,6 +1,6 @@
 # jepsen.mysql
 
-Jepsen tests for MySQL and MariaDB.
+Jepsen tests for MySQL and MariaDB on Debian Bookworm. You'll need [a Jepsen environment](https://github.com/jepsen-io/jepsen#setting-up-a-jepsen-environment) to run this test.
 
 ## Usage
 

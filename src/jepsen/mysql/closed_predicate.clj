@@ -259,7 +259,7 @@
         ; Then do normal transactions.
         (ro-gen txns)))))
 
-(defn insert-fractured-reads-gen
+(defn gen-112446
   "A simpler, hardcoded generator to minimally reproduce a fractured reads bug."
   []
   (->> (gen/mix
@@ -319,9 +319,8 @@
                 (* 2 (count (:nodes opts)))
                 (range)
                 (fn [system]
-                  (gen opts)
-                  ;(insert-fractured-reads-gen)
-                  ))
+                  (cond (:repro-112446 opts) (gen-112446)
+                        true                 (gen opts))))
    ; Moar concurrency???
    ;:concurrency (* 10 (:concurrency opts))
    :checker (checker/compose

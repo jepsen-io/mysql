@@ -144,7 +144,8 @@
 
       db/LogFiles
       (log-files [this test node]
-        ["/var/log/mysql/error.log"])
+        {"/var/log/mysql/error.log"           "error.log"
+         (str "/var/lib/mysql/" node ".log")  "query.log"})
 
       db/Kill
       (start! [this test node]

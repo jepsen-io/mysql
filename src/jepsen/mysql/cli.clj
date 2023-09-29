@@ -180,6 +180,8 @@
     :parse-fn #(.toUpperCase %)
     :validate [#{"ON" "OFF"} "Must be `on` or `off`"]]
 
+   [nil "--repro-112446" "For the closed-predicate workload, uses a generator more likely to generate compact reproductions of MySQL bug 112446: fractured reads at serializable."]
+
    ["-v" "--version STRING" "What version of Stolon should we test?"
     :default "0.16.0"]
 
