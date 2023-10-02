@@ -162,7 +162,11 @@
 
         :txn (c/with-errors op
                (let [txn       value
-                     use-txn?  (< 1 (count txn))
+                     use-txn?  (or (< 1 (count txn))
+                                   ; Predicate reads are implemented as selects
+                                   ; across multiple tables; we need a txn for
+                                   ; them.
+                                   (some (comp #{:rp} first) txn))
                      txn'      (if use-txn?
                                  (j/with-transaction
                                    [t conn {:isolation (:isolation test)}]
