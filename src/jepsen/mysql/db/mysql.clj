@@ -7,6 +7,7 @@
             [jepsen [control :as c]
                     [core :as jepsen]
                     [db :as db]
+                    [lazyfs :as lazyfs]
                     [util :as util :refer [meh]]]
             [jepsen.control [net :as cn]
                             [util :as cu]]
@@ -15,6 +16,10 @@
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
             [slingshot.slingshot :refer [try+ throw+]]))
+
+(def data-dir
+  "Where does MySQL store its mutable data files?"
+  "/var/lib/mysql")
 
 (defn install!
   "Installs MySQL"
@@ -89,6 +94,13 @@
                   :log-message    "Waiting for slave IO to start running"
                   :timeout        60000}))
 
+(defn kill!
+  "Kills MySQL"
+  []
+  (c/su (cu/grepkill! "mysqld")
+        (meh (c/exec :systemctl :stop :mysql))))
+
+
 (defn setup-replication!
   "Initiates binlog replication between the primary and secondaries."
   [test node repl-state]
@@ -118,43 +130,56 @@
         (j/execute-one! c ["START SLAVE"])
         (await-slave-sql-running c)))))
 
+(defrecord DB [lazyfs     ; A LazyFS object
+               repl-state ; A promise which will receive the file and position
+                          ; of the leader node
+                          ]
+  db/DB
+  (setup! [this test node]
+    (install! test node)
+    (configure! test node)
+    (when (:lazyfs test)
+      (db/setup! lazyfs test node))
+    (c/sudo :mysql (c/exec :mysqld :--initialize-insecure))
+    ;(c/su (c/exec :touch "/var/log/mysql/error.log")
+    ;      (c/exec :chown "mysql:adm" "/var/log/mysql/error.log"))
+    (db/start! this test node)
+    (make-db!)
+    (jepsen/synchronize test)
+    (setup-replication! test node repl-state)
+    (when (:lazyfs test)
+      (lazyfs/checkpoint! lazyfs)))
+
+  (teardown! [this test node]
+    (kill!)
+    (when (:lazyfs test)
+      (db/teardown! lazyfs test node))
+    (c/su
+      (c/exec :rm :-rf
+              (c/lit (str data-dir "/*"))
+              (c/lit "/var/log/mysql/*"))))
+
+  db/LogFiles
+  (log-files [this test node]
+    (merge {"/var/log/mysql/error.log"           "error.log"
+            (str "/var/lib/mysql/" node ".log")  "query.log"}
+           (when (:lazyfs test) (db/log-files lazyfs test node))))
+
+  db/Kill
+  (start! [this test node]
+    ; lol
+    (c/su
+      (meh (c/exec :systemctl :start :mysql))
+      (c/exec :systemctl :start :mysql)))
+
+  (kill! [this test node]
+    (kill!)
+    (when (:lazyfs test)
+      (lazyfs/lose-unfsynced-writes! lazyfs))))
+
 (defn db
   "A MySQL database. Takes CLI options."
   [opts]
-  (let [; A promise which will receive the file and position of the leader node
-        repl-state (promise)]
-    (reify db/DB
-      (setup! [this test node]
-        (install! test node)
-        (configure! test node)
-        (c/sudo :mysql (c/exec :mysqld :--initialize-insecure))
-        ;(c/su (c/exec :touch "/var/log/mysql/error.log")
-        ;      (c/exec :chown "mysql:adm" "/var/log/mysql/error.log"))
-        (db/start! this test node)
-        (make-db!)
-        (jepsen/synchronize test)
-        (setup-replication! test node repl-state)
-        )
-
-      (teardown! [this test node]
-        (db/kill! this test node)
-        (c/su
-          (c/exec :rm :-rf
-                  (c/lit "/var/lib/mysql/*")
-                  (c/lit "/var/log/mysql/*"))))
-
-      db/LogFiles
-      (log-files [this test node]
-        {"/var/log/mysql/error.log"           "error.log"
-         (str "/var/lib/mysql/" node ".log")  "query.log"})
-
-      db/Kill
-      (start! [this test node]
-        ; lol
-        (c/su
-          (meh (c/exec :systemctl :start :mysql))
-          (c/exec :systemctl :start :mysql)))
-
-      (kill! [this test node]
-        (c/su (cu/grepkill! "mysqld")
-              (meh (c/exec :systemctl :stop :mysql)))))))
+  (map->DB {:repl-state (promise)
+            :lazyfs     (lazyfs/db {:dir        data-dir
+                                    :cache-size "1GB"})}))

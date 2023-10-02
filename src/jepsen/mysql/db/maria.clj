@@ -1,5 +1,5 @@
-(ns jepsen.mysql.db
-  "Database automation."
+(ns jepsen.mysql.db.maria
+  "Automates setting up and tearing down MariaDB."
   (:require [clojure [pprint :refer [pprint]]
                      [string :as str]]
             [clojure.java.io :as io]

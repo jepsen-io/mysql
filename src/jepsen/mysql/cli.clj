@@ -13,19 +13,17 @@
             [jepsen.nemesis.combined :as nc]
             [jepsen.os.debian :as debian]
             [jepsen.mysql [append :as append]
-                          [closed-predicate :as closed-predicate]
-                          [db :as db]]
-            [jepsen.mysql.db [mysql :as db.mysql]
-                             [noop :as db.noop]
-                             [rds :as db.rds]]))
+                          [closed-predicate :as closed-predicate]]
+            [jepsen.mysql.db [maria :as db.maria]
+                             [mysql :as db.mysql]
+                             [noop :as db.noop]]))
 
 (def db-types
   "A map of DB names to functions that take CLI options and return Jepsen DB
   instances."
   {:none  db.noop/db
-   :maria db/db
-   :mysql db.mysql/db
-   :rds   db.rds/db})
+   :maria db.maria/db
+   :mysql db.mysql/db})
 
 (def workloads
   "A map of workload names to functions that take CLI options and return
@@ -71,25 +69,26 @@
         workload ((workloads workload-name) opts)
         db       ((db-types (:db opts)) opts)
         os       (case (:db opts)
-                   :none  os/noop
-                   :rds   os/noop
+                   :none os/noop
                    debian/os)
         ssh      (case (:db opts)
-                   (:none :rds) {:dummy? true}
+                   :none {:dummy? true}
                    (:ssh tests/noop-test))
         nemesis  (case (:db opts)
-                   (:none :rds) nil
+                   :none nil
                    (nc/nemesis-package
                      {:db db
                       :nodes (:nodes opts)
                       :faults (:nemesis opts)
                       :partition {:targets [:one :majority]}
-                      :pause {:targets [:one :majority]}
-                      :kill  {:targets [:one :majority :all]}
+                      :pause {:targets [:one]}
+                      :kill  {:targets [:one :all]}
                       :interval (:nemesis-interval opts)}))]
     (merge tests/noop-test
            opts
-           {:name (str (name workload-name)
+           {:name (str (name (:db opts))
+                       " " (name workload-name)
+                       (when (:lazyfs opts) " lazyfs")
                        " binlog=" (name (:binlog-format opts))
                        " " (short-isolation (:isolation opts)) "("
                        (short-isolation (:expected-consistency-model opts)) ") "
@@ -144,6 +143,8 @@
     :default  10
     :parse-fn parse-long
     :validate [pos? "Must be a positive integer"]]
+
+   [nil "--lazyfs" "If set, mounts MySQL in a lazy filesystem that loses un-fsyned writes on nemesis kills."]
 
    ["-l" "--log-sql" "If set, logs selected SQL statements to the console to aid in debugging"]
 
