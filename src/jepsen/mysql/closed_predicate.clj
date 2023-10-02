@@ -23,7 +23,7 @@
             [next.jdbc.sql.builder :as sqlb]
             [slingshot.slingshot :refer [try+ throw+]]))
 
-(def default-table-count 2)
+(def default-table-count 3)
 
 (defn table-name
   "Takes an integer and constructs a table name."
