@@ -234,7 +234,6 @@
          this])
 
       (update [this test context {:keys [f type value] :as event}]
-        (info :update event)
         (if (and (= f    :await-init)
                  (= type :ok)
                  (= value [[:r k v]]))
