@@ -129,15 +129,16 @@
 
   (setup! [_ test]
     (when (= (jepsen/primary test) node)
-      (dotimes [i (:table-count test default-table-count)]
-        (j/execute! conn
-                    [(str "create table if not exists " (table-name i)
-                          " (id int not null primary key,
-                          sk int not null,
-                          val text)")])
-        ; Make sure we start fresh--in case we're using an existing
-        ; cluster and the DB automation isn't wiping the state for us.
-        (j/execute! conn [(str "delete from " (table-name i))]))))
+      (when (compare-and-set! initialized? false true)
+        (dotimes [i (:table-count test default-table-count)]
+          (j/execute! conn
+                      [(str "create table if not exists " (table-name i)
+                            " (id int not null primary key,
+                            sk int not null,
+                            val text)")])
+          ; Make sure we start fresh--in case we're using an existing
+          ; cluster and the DB automation isn't wiping the state for us.
+          (j/execute! conn [(str "delete from " (table-name i))])))))
 
   (invoke! [_ test op]
     ; One-time connection setup

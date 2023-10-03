@@ -121,20 +121,24 @@
 
   (setup! [_ test]
     (c/with-logging test [conn conn]
-    (when (= (jepsen/primary test) node)
-        (dotimes [i (:table-count test default-table-count)]
-          (j/execute! conn
-                      [(str "create table if not exists " (table-name i)
-                            " (`system` int not null,
-                            id int not null,
-                            `value` int not null,
-                            primary key (`system`, id))")])
-          (j/execute! conn
-                      [(str "create index system_idx_" i " on " (table-name i)
-                            " (`system`)")])
-          ; Make sure we start fresh--in case we're using an existing
-          ; cluster and the DB automation isn't wiping the state for us.
-          (j/execute! conn [(str "delete from " (table-name i))])))))
+      (when (= (jepsen/primary test) node)
+        (when (compare-and-set! initialized? false true)
+          (dotimes [i (:table-count test default-table-count)]
+            ; Note that these MUST be idempotent; mysql doesn't seem to do
+            ; transaction replay correctly when a follower crashes. If you
+            ; execute an `alter table add index` once on the leader, the
+            ; follower will keep replaying that over and over again even though
+            ; it already HAS that index, wedging itself every time. What a mess.
+            (j/execute! conn
+                        [(str "create table if not exists " (table-name i)
+                              " (`system` int not null,
+                              id int not null,
+                              `value` int not null,
+                              index (`system`),
+                              primary key (`system`, id))")])
+            ; Make sure we start fresh--in case we're using an existing
+            ; cluster and the DB automation isn't wiping the state for us.
+            (j/execute! conn [(str "delete from " (table-name i))]))))))
 
   (invoke! [this test {:keys [f value] :as op}]
     (let [[system value] value]

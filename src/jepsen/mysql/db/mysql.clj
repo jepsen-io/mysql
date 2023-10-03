@@ -33,8 +33,9 @@
     (debian/install [:mysql-server :mysql-client])))
 
 (defn configure!
-  "Writes config files"
-  [test node]
+  "Writes config files. pre-replication? is true when we configure prior to
+  setting up replication, and false thereafter."
+  [test node pre-replication?]
   (-> (io/resource "my.cnf")
        slurp
        (str/replace #"%IP%" (cn/ip node))
@@ -47,6 +48,19 @@
        ; Deprecated in mysql
        (str/replace #"%BINLOG_FORMAT%"
                     (.toUpperCase (name (:binlog-format test))))
+       ; Followers are super-read-only to prevent updates from accidentally
+       ; arriving. Note that if we *don't* do this, mysql will murder itself by
+       ; trying to run replication transactions at the same time as read
+       ; queries and letting the read queries take locks, breaking the
+       ; replication update thread entirely? This might be the worst system
+       ; I've ever worked on.
+       (str/replace #"%SUPER_READ_ONLY%"
+                    (if (or pre-replication?
+                            (= node (jepsen/primary test)))
+                      "OFF"
+                      "ON"))
+       ; This option lets you totally break serializability by setting it to
+       ; OFF. Definitely a thing you, or at least amazon, want in production
        (str/replace #"%REPLICA_PRESERVE_COMMIT_ORDER%" (:replica-preserve-commit-order test))
        (cu/write-file! "/etc/mysql/mysql.conf.d/99-jepsen.cnf")))
 
@@ -137,9 +151,10 @@
   db/DB
   (setup! [this test node]
     (install! test node)
-    (configure! test node)
+    (configure! test node true) ; Pre-replication config
     (when (:lazyfs test)
       (db/setup! lazyfs test node))
+    (c/su (c/exec :chown "mysql:mysql" data-dir))
     (c/sudo :mysql (c/exec :mysqld :--initialize-insecure))
     ;(c/su (c/exec :touch "/var/log/mysql/error.log")
     ;      (c/exec :chown "mysql:adm" "/var/log/mysql/error.log"))
@@ -147,6 +162,13 @@
     (make-db!)
     (jepsen/synchronize test)
     (setup-replication! test node repl-state)
+    (jepsen/synchronize test)
+    (when (not= node (jepsen/primary test))
+      ; Now we take down the secondary and force it to be a super-read-only node
+      (c/su (c/exec :systemctl :stop :mysql))
+      (configure! test node false)
+      (db/start! this test node))
+
     (when (:lazyfs test)
       (lazyfs/checkpoint! lazyfs)))
 

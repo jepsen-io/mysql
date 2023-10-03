@@ -1,8 +1,10 @@
 (ns jepsen.mysql.cli
   "Command-line entry point for MySQL tests."
   (:require [clojure [string :as str]]
+            [clojure.tools.logging :refer [info warn]]
             [jepsen [checker :as checker]
              [cli :as cli]
+             [control :as c]
              [db :as jepsen.db]
              [generator :as gen]
              [nemesis :as nemesis]
@@ -206,6 +208,28 @@
   (update-in parsed [:options :expected-consistency-model]
              #(or % (get-in parsed [:options :isolation]))))
 
+(def wipe-command
+  {"wipe"
+   {:opt-spec [[nil "--nodes NODE_LIST" "Comma-separated list of node hostnames."
+                :parse-fn #(str/split % #",\s*")]]
+    :opt-fn identity
+    :usage "MySQL can get wedged in completely inscrutable ways. This command
+           completely uninstalls it on the given nodes."
+    :run (fn [{:keys [options]}]
+           (info (pr-str options))
+           (c/on-many (:nodes options)
+                      (info "Wiping")
+                      (c/su
+                        (c/exec "DEBIAN_FRONTEND='noninteractive'"
+                                :apt :remove :-y :--purge
+                                (c/lit "mysql-*")
+                                (c/lit "mariadb-*"))
+                        (c/exec :rm :-rf "/var/lib/mysql"
+                                (c/lit "/var/lib/mysql-*")
+                                "/var/log/mysql"
+                                "/etc/mysql"))
+                      (info "Wiped")))}})
+
 (defn -main
   "Handles command line arguments. Can either run a test, or a web server for
   browsing results."
@@ -216,5 +240,6 @@
                    (cli/test-all-cmd {:tests-fn all-tests
                                       :opt-spec cli-opts
                                       :opt-fn   opt-fn})
-                   (cli/serve-cmd))
+                   (cli/serve-cmd)
+                   wipe-command)
             args))
