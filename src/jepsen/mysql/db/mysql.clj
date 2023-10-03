@@ -61,7 +61,10 @@
                       "ON"))
        ; This option lets you totally break serializability by setting it to
        ; OFF. Definitely a thing you, or at least amazon, want in production
-       (str/replace #"%REPLICA_PRESERVE_COMMIT_ORDER%" (:replica-preserve-commit-order test))
+       (str/replace #"%REPLICA_PRESERVE_COMMIT_ORDER%"
+                    (:replica-preserve-commit-order test))
+       (str/replace #"%INNODB_FLUSH_LOG_AT_TRX_COMMIT%"
+                    (str (:innodb-flush-log-at-trx-commit test)))
        (cu/write-file! "/etc/mysql/mysql.conf.d/99-jepsen.cnf")))
 
 (defn sql!

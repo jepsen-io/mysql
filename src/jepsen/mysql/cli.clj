@@ -138,6 +138,10 @@
     :default nil
     :parse-fn keyword]
 
+   [nil "--innodb-flush-log-at-trx-commit SETTING" "0 for write+flush n seconds, 1 for every txn commit, 2 for write at commit, flush every ns econds."
+    :default 1
+    :parse-fn parse-long]
+
    [nil "--insert-only" "If set, tells certain workloads (e.g. closed-predicate) to perform only inserts."
     :id :insert-only?]
 
