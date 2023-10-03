@@ -8,6 +8,7 @@
             [next.jdbc.sql.builder :as sqlb]
             [slingshot.slingshot :refer [try+ throw+]])
   (:import (java.sql Connection
+                     SQLNonTransientConnectionException
                      SQLTransactionRollbackException)
            (com.mysql.cj.jdbc.exceptions MySQLTransactionRollbackException)))
 
@@ -97,8 +98,21 @@
 (defmacro with-errors
   "Takes an operation and a body, turning known errors into :fail or :info ops."
   [op & body]
-  `(try ~@body
+  `(try+ ~@body
         (catch SQLTransactionRollbackException e#
           (assoc ~op :type :fail, :error :rollback))
         (catch MySQLTransactionRollbackException e#
-          (assoc ~op :type :fail, :error :rollback))))
+          (assoc ~op :type :fail, :error :rollback))
+        (catch clojure.lang.ExceptionInfo e#
+          (if (re-find #"Rollback failed handling" (.getMessage e#))
+            (assoc ~op :type :info, :error :rollback-failed)
+            (throw+ e#)))
+        (catch SQLNonTransientConnectionException e#
+          (condp re-find (.getMessage e#)
+            #"unexpected end of stream"
+            (assoc ~op :type :info, :error :unexpected-end-of-stream)
+
+            #"Connection is closed"
+            (assoc ~op :type :info, :error :connection-closed)
+
+            (throw+ e#)))))
