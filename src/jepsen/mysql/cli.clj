@@ -15,7 +15,8 @@
             [jepsen.nemesis.combined :as nc]
             [jepsen.os.debian :as debian]
             [jepsen.mysql [append :as append]
-                          [closed-predicate :as closed-predicate]]
+                          [closed-predicate :as closed-predicate]
+                          [nonrepeatable-read :as nonrepeatable-read]]
             [jepsen.mysql.db [maria :as db.maria]
                              [mysql :as db.mysql]
                              [noop :as db.noop]]))
@@ -32,6 +33,7 @@
   workload maps."
   {:append append/workload
    :closed-predicate closed-predicate/workload
+   :nonrepeatable-read nonrepeatable-read/workload
    :none (fn [_] tests/noop-test)})
 
 (def all-workloads
