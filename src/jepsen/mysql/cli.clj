@@ -16,6 +16,7 @@
             [jepsen.os.debian :as debian]
             [jepsen.mysql [append :as append]
                           [closed-predicate :as closed-predicate]
+                          [mav :as mav]
                           [nonrepeatable-read :as nonrepeatable-read]]
             [jepsen.mysql.db [maria :as db.maria]
                              [mysql :as db.mysql]
@@ -31,9 +32,10 @@
 (def workloads
   "A map of workload names to functions that take CLI options and return
   workload maps."
-  {:append append/workload
-   :closed-predicate closed-predicate/workload
-   :nonrepeatable-read nonrepeatable-read/workload
+  {:append              append/workload
+   :closed-predicate    closed-predicate/workload
+   :mav                 mav/workload
+   :nonrepeatable-read  nonrepeatable-read/workload
    :none (fn [_] tests/noop-test)})
 
 (def all-workloads
