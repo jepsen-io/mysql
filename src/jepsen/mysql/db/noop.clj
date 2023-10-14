@@ -25,7 +25,8 @@
     (setup! [this test node]
       (when (= (jepsen/primary test) node)
         (with-open [c (mc/open test node {:db nil})]
-          (j/execute-one! c [(str "CREATE DATABASE " mc/db ";\n")]))))
+          (j/execute-one! c [(str "CREATE DATABASE IF NOT EXISTS "
+                                  mc/db ";\n")]))))
 
     (teardown! [this test node]
       (when (= (jepsen/primary test) node)
