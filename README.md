@@ -10,6 +10,12 @@ Quickstart for a single-node test with closed-world predicates:
 lein run test --db mysql --nodes n1 -w closed-predicate --concurrency 30n --rate 1000 --time-limit 120 -i serializable --nemesis none --key-count 40
 ```
 
+Or for testing serializability in an RDS cluster:
+
+```
+lein run test --workload append --db none --nodes database-1.cluster-csraamczyi8q.us-east-1.rds.amazonaws.com,database-1.cluster-ro-csraamczyi8q.us-east-1.rds.amazonaws.com --nemesis none --max-writes-per-key 16 --rate 1000 --concurrency 10n
+```
+
 ## License
 
 Copyright © 2023 Jepsen, LLC
