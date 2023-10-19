@@ -25,9 +25,15 @@
     (setup! [this test node]
       (when (= (jepsen/primary test) node)
         (with-open [c (mc/open test node {:db nil})]
-          (j/execute-one! c [(str "CREATE DATABASE " mc/db ";\n")]))))
+          (j/execute-one! c [(str "CREATE DATABASE " mc/db ";\n")])
+          ; I think there's a race condition where this horribly breaks, like,
+          ; all RDS replication altogether
+          (Thread/sleep 10000))))
 
     (teardown! [this test node]
       (when (= (jepsen/primary test) node)
         (with-open [c (mc/open test node {:db nil})]
-          (j/execute-one! c [(str "DROP DATABASE IF EXISTS " mc/db ";\n")]))))))
+          (j/execute-one! c [(str "DROP DATABASE IF EXISTS " mc/db ";\n")]))
+        ; I think there's a race condition where this horribly breaks, like,
+        ; all RDS replication altogether
+        (Thread/sleep 10000)))))
