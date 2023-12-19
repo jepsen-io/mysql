@@ -55,7 +55,7 @@
       (j/with-transaction [t conn {:isolation (:isolation test)}]
         (c/with-logging test [t t]
           (doseq [id (shuffle [0 1])]
-            (Thread/sleep (rand-int 10))
+            (Thread/sleep (long (rand-int 10)))
             (j/execute! t ["update mav set value = value + 1 where id = ?"
                            id]))
           (assoc op :type :ok)))
@@ -67,13 +67,13 @@
                 a1 (-> t
                        (j/execute-one! ["select value from mav where id = ?" 0])
                        :mav/value)
-                _ (Thread/sleep (rand-int 10))
+                _ (Thread/sleep (long (rand-int 10)))
                 r (j/execute! t ["update mav set noop = ? where id = ?"
                                  (rand-int 100) 1])
                 b2 (-> t
                        (j/execute-one! ["select value from mav where id = ?" 1])
                        :mav/value)
-                _ (Thread/sleep (rand-int 10))
+                _ (Thread/sleep (long (rand-int 10)))
                 a2 (-> t
                        (j/execute-one! ["select value from mav where id = ?" 0])
                        :mav/value)]

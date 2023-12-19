@@ -67,12 +67,12 @@
                 name1 (-> t
                           (j/execute-one! ["select name from people where id = ?" id])
                           :people/name)
-                _ (Thread/sleep (rand-int 10))
+                _ (Thread/sleep (long (rand-int 10)))
                 r (j/execute! t ["update people set gender = ? where id = ?"
                                  (:gender value)
                                  id])
 
-                _ (Thread/sleep (rand-int 10))
+                _ (Thread/sleep (long (rand-int 10)))
                 name2 (-> t
                           (j/execute-one! ["select name from people where id = ?" id])
                           :people/name)]

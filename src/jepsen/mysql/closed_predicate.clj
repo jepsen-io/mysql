@@ -55,7 +55,7 @@
   "Executes a transactional micro-op on a connection. Returns the completed
   micro-op."
   [conn test system txn? [f k v]]
-  (Thread/sleep (rand-int 10))
+  (Thread/sleep (long (rand-int 10)))
   (let [table-count (:table-count test default-table-count)]
     [f k (case f
            ; Single-key read
