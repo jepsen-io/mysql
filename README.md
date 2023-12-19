@@ -16,6 +16,12 @@ Or for testing serializability in an RDS cluster:
 lein run test --workload append --db none --nodes database-1.cluster-csraamczyi8q.us-east-1.rds.amazonaws.com,database-1.cluster-ro-csraamczyi8q.us-east-1.rds.amazonaws.com --nemesis none --max-writes-per-key 16 --rate 1000 --concurrency 10n
 ```
 
+Or to reproduce violations of monotonic atomic view in MariaDB:
+
+```
+lein run test --nodes n1 --concurrency 10n --rate 10000 --time-limit 30 --db maria --isolation repeatable-read --workload mav
+```
+
 ## License
 
 Copyright © 2023 Jepsen, LLC
