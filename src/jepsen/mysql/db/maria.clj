@@ -20,7 +20,15 @@
   "Installs MyS^H^HariaDB"
   [test node]
   (c/su
-    (debian/install [:mariadb-server])))
+    (debian/install [:mariadb-server])
+    ; Work around an LXC bug
+    (c/exec :mkdir :-p "/etc/systemd/system/mariadb.service.d")
+    (cu/write-file! "[Service]
+ProtectHome=false
+ProtectSystem=false
+PrivateDevices=false"
+                    "/etc/systemd/system/mariadb.service.d/lxc.conf")
+    (c/exec :systemctl :daemon-reload)))
 
 (defn configure!
   "Writes config files"
@@ -34,6 +42,16 @@
                     (.toUpperCase (name (:binlog-format test))))
        ; This option doesn't exist in Maria AFAICT
        (str/replace #"replica-preserve-commit-order.*?\n" "")
+       ; Followers are super-read-only to prevent updates from
+       ; accidentally arriving. Note that if we *don't* do this, mysql
+       ; will murder itself by trying to run replication transactions at
+       ; the same time as read queries and letting the read queries take
+       ; locks, breaking the replication update thread entirely? This
+       ; might be the worst system
+       ; I've ever worked on.
+       (str/replace #".*%SUPER_READ_ONLY%.*" "")
+       (str/replace #"%INNODB_FLUSH_LOG_AT_TRX_COMMIT%"
+                    (str (:innodb-flush-log-at-trx-commit test)))
        (cu/write-file! "/etc/mysql/mariadb.conf.d/99-jepsen.cnf")))
 
 (defn sql!
