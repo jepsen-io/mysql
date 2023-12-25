@@ -25,6 +25,7 @@
   "Installs MySQL"
   [test node]
   (c/su
+    (debian/install [:lsb-release]) ; pre-dependancy
     (c/cd "/tmp"
           ; See https://dev.mysql.com/downloads/repo/apt/
           (let [deb (cu/wget! "https://dev.mysql.com/get/mysql-apt-config_0.8.29-1_all.deb")]
