@@ -48,6 +48,11 @@
        ; Deprecated in mysql
        (str/replace #"%BINLOG_FORMAT%"
                     (.toUpperCase (name (:binlog-format test))))
+       (str/replace #"%BINLOG_TRANSACTION_DEPENDENCY_TRACKING%"
+                    (case (:binlog-transaction-dependency-tracking test)
+                      :commit-order "COMMIT_ORDER"
+                      :writeset "WRITESET"
+                      :writeset-session "WRITESET_SESSION"))
        ; Followers are super-read-only to prevent updates from accidentally
        ; arriving. Note that if we *don't* do this, mysql will murder itself by
        ; trying to run replication transactions at the same time as read
@@ -186,8 +191,9 @@
 
   db/LogFiles
   (log-files [this test node]
-    (merge {"/var/log/mysql/error.log"           "error.log"
-            (str "/var/lib/mysql/" node ".log")  "query.log"}
+    (merge {"/var/log/mysql/error.log"              "error.log"
+            "/etc/mysql/mysql.conf.d/99-jepsen.cnf" "my-jepsen.cnf"
+            (str "/var/lib/mysql/" node ".log")     "query.log"}
            (when (:lazyfs test) (db/log-files lazyfs test node))))
 
   db/Kill

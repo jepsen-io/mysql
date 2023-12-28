@@ -124,6 +124,12 @@
     :parse-fn keyword
     :validate [#{:mixed :statement :row} "must be statement, mixed, or row"]]
 
+   [nil "--binlog-transaction-dependency-tracking TYPE" "How should MySQL track dependency orders?"
+    :default :commit-order
+    :parse-fn keyword
+    :validate [#{:commit-order :writeset :writeset-session}
+                 "must be commit-order, writeset, or writeset-session"]]
+
    ["-d" "--db TYPE" "Maria, mysql, or none (for testing an extant cluster)."
     :default :maria
     :parse-fn keyword

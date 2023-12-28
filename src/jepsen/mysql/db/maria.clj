@@ -40,6 +40,11 @@ PrivateDevices=false"
        (str/replace #"%REPLICA_PRESERVE_COMMIT_ORDER%" (:replica-preserve-commit-order test))
        (str/replace #"%BINLOG_FORMAT%"
                     (.toUpperCase (name (:binlog-format test))))
+       (str/replace #"%BINLOG_TRANSACTION_DEPENDENCY_TRACKING%"
+                    (case (:binlog-transaction-dependency-tracking test)
+                      :commit-order "COMMIT_ORDER"
+                      :writeset "WRITESET"
+                      :writeset-session "WRITESET_SESSION"))
        ; This option doesn't exist in Maria AFAICT
        (str/replace #"replica-preserve-commit-order.*?\n" "")
        ; Followers are super-read-only to prevent updates from
@@ -152,7 +157,8 @@ PrivateDevices=false"
 
       db/LogFiles
       (log-files [this test node]
-        ["/var/log/mysql/error.log"])
+        {"/var/log/mysql/error.log"                "error.log"
+         "/etc/mysql/mariadb.conf.d/99-jepsen.cnf" "my-jepsen.cnf"})
 
       db/Kill
       (start! [this test node]
