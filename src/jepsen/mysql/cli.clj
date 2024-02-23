@@ -169,6 +169,12 @@
     :validate [(partial every? #{:pause :kill :partition :clock})
                "Faults must be pause, kill, partition, clock, or member, or the special faults all or none."]]
 
+   [nil "--maria-ci-url URL" "The HTTP URL of a MariaDB CI build directory, e.g. https://ci.mariadb.org/43813. If the --db flag is `maria`, this is used to install a specific version of MariaDB."
+    :default "https://ci.mariadb.org/43813"]
+
+   [nil "--maria-package NAME" "The Debian package name we should install for mariadb. Note that Maria package names themselves include version strings!"
+    :default "mariadb-server"]
+
    [nil "--max-txn-length NUM" "Maximum number of operations in a transaction."
     :default  4
     :parse-fn parse-long
@@ -198,9 +204,6 @@
     :validate [#{"ON" "OFF"} "Must be `on` or `off`"]]
 
    [nil "--repro-112446" "For the closed-predicate workload, uses a generator more likely to generate compact reproductions of MySQL bug 112446: fractured reads at serializable."]
-
-   ["-v" "--version STRING" "What version of Stolon should we test?"
-    :default "0.16.0"]
 
    ["-w" "--workload NAME" "What workload should we run?"
     :parse-fn keyword

@@ -22,6 +22,13 @@ Or to reproduce violations of monotonic atomic view in MariaDB:
 lein run test --nodes n1 --concurrency 10n --rate 10000 --time-limit 30 --db maria --isolation repeatable-read --workload mav
 ```
 
+To wipe out an install of Maria/MySQL so you can install the other (since they
+step on each other's package names):
+
+```
+lein run wipe --nodes n1
+```
+
 ## License
 
 Copyright © 2023 Jepsen, LLC

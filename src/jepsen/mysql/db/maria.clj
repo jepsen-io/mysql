@@ -14,13 +14,27 @@
             [jepsen.mysql [client :as mc]]
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
+            [org.httpkit.client :as http]
             [slingshot.slingshot :refer [try+ throw+]]))
+
+(defn configure-repo!
+  "Sets up the MariaDB repo on the current node."
+  [test]
+  (c/su
+    (let [base-url (:maria-ci-url test)
+          _ (assert (re-find #"https://" base-url))
+          deb-url (str base-url "/amd64-debian-12-deb-autobake")
+          sources-url (str deb-url "/mariadb.sources")
+          sources-file "/etc/apt/sources.list.d/mariadb.sources"]
+      (c/exec :wget :-O sources-file sources-url)
+      (debian/update!))))
 
 (defn install!
   "Installs MyS^H^HariaDB"
   [test node]
+  (configure-repo! test)
   (c/su
-    (debian/install [:mariadb-server])
+    (debian/install [(:maria-package test)])
     ; Work around an LXC bug
     (c/exec :mkdir :-p "/etc/systemd/system/mariadb.service.d")
     (cu/write-file! "[Service]
