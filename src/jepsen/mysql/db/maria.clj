@@ -87,8 +87,8 @@ PrivateDevices=false"
           c/throw-on-nonzero-exit))))
 
 (defn make-db!
-  "Adds a user and DB with remote access"
-  []
+  "Adds a user and DB with remote access."
+  [test]
   (let [u (str "'" mc/user "'@'%'")]
     (sql! (str "CREATE DATABASE " mc/db ";\n"
                "CREATE USER " u " IDENTIFIED BY '" mc/password "';\n"
@@ -99,7 +99,11 @@ PrivateDevices=false"
                "GRANT REPLICATION SLAVE ADMIN ON *.* to " u ";\n"
                "GRANT REPLICATION SLAVE ON *.* to " u ";\n"
                "GRANT ALL PRIVILEGES ON " mc/db ".* TO " u ";\n"
-               "FLUSH PRIVILEGES;\n"))))
+               "FLUSH PRIVILEGES;\n"
+               ; Set isolation level
+               "SET GLOBAL innodb_strict_isolation="
+               (if (:innodb-strict-isolation test) "ON" "OFF")
+               ";\n"))))
 
 (defn await-slave-sql-running
   "Run on the secondary to block until slave-sql-running and slave-io-running
@@ -158,7 +162,7 @@ PrivateDevices=false"
         (configure! test node)
         (c/sudo :mysql (c/exec :mysql_install_db))
         (db/start! this test node)
-        (make-db!)
+        (make-db! test)
         (jepsen/synchronize test)
         (setup-replication! test node repl-state))
 

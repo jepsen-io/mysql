@@ -152,6 +152,9 @@
     :default 1
     :parse-fn parse-long]
 
+   [nil "--innodb-strict-isolation" "If set, enables INNODB_STRICT_ISOLATION, an experiemental setting MariaDB developers are trying which might fix some of the bugs we found."
+    :default false]
+
    [nil "--insert-only" "If set, tells certain workloads (e.g. closed-predicate) to perform only inserts."
     :id :insert-only?]
 
