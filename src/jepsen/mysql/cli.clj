@@ -79,7 +79,7 @@
                    debian/os)
         ssh      (case (:db opts)
                    :none {:dummy? true}
-                   (:ssh tests/noop-test))
+                   (:ssh opts))
         nemesis  (case (:db opts)
                    :none nil
                    (nc/nemesis-package
@@ -96,6 +96,8 @@
                        " " (name workload-name)
                        (when (:lazyfs opts) " lazyfs")
                        " binlog=" (name (:binlog-format opts))
+                       (when (:innodb-strict-isolation opts)
+                         " strict-isolation")
                        " " (short-isolation (:isolation opts)) "("
                        (short-isolation (:expected-consistency-model opts)) ") "
                        (str/join "," (map name (:nemesis opts))))
