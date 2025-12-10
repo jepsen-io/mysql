@@ -21,13 +21,14 @@
   "Sets up the MariaDB repo on the current node."
   [test]
   (c/su
-    (let [base-url (:maria-ci-url test)
-          _ (assert (re-find #"https://" base-url))
-          deb-url (str base-url "/amd64-debian-12-deb-autobake")
-          sources-url (str deb-url "/mariadb.sources")
-          sources-file "/etc/apt/sources.list.d/mariadb.sources"]
-      (c/exec :wget :-O sources-file sources-url)
-      (debian/update!))))
+    ; MariaDB added this but I don't think it works any more; throws 404 errors.
+    (when-let [base-url (:maria-ci-url test)]
+      (assert (re-find #"https://" base-url))
+      (let [deb-url (str base-url "/amd64-debian-12-deb-autobake")
+            sources-url (str deb-url "/mariadb.sources")
+            sources-file "/etc/apt/sources.list.d/mariadb.sources"]
+        (c/exec :wget :-O sources-file sources-url)
+        (debian/update!)))))
 
 (defn install!
   "Installs MyS^H^HariaDB"
@@ -100,9 +101,9 @@ PrivateDevices=false"
                "GRANT REPLICATION SLAVE ON *.* to " u ";\n"
                "GRANT ALL PRIVILEGES ON " mc/db ".* TO " u ";\n"
                "FLUSH PRIVILEGES;\n"
-               ; Set isolation level
-               "SET GLOBAL innodb_strict_isolation="
-               (if (:innodb-strict-isolation test) "ON" "OFF")
+               ; Set isolation style
+               "SET GLOBAL innodb_snapshot_isolation="
+               (if (:innodb-snapshot-isolation test) "ON" "OFF")
                ";\n"))))
 
 (defn await-slave-sql-running

@@ -96,8 +96,8 @@
                        " " (name workload-name)
                        (when (:lazyfs opts) " lazyfs")
                        " binlog=" (name (:binlog-format opts))
-                       (when (:innodb-strict-isolation opts)
-                         " strict-isolation")
+                       (when (:innodb-snapshot-isolation opts)
+                         " snapshot-isolation")
                        " " (short-isolation (:isolation opts)) "("
                        (short-isolation (:expected-consistency-model opts)) ") "
                        (str/join "," (map name (:nemesis opts))))
@@ -154,7 +154,7 @@
     :default 1
     :parse-fn parse-long]
 
-   [nil "--innodb-strict-isolation" "If set, enables INNODB_STRICT_ISOLATION, an experiemental setting MariaDB developers are trying which might fix some of the bugs we found."
+   [nil "--innodb-snapshot-isolation" "If set, enables INNODB_SNAPSHOT_ISOLATION, a new setting which makes MariaDB do SI, rather than the weird read-committed+ thing it used to do at REPEATABLE READ."
     :default false]
 
    [nil "--insert-only" "If set, tells certain workloads (e.g. closed-predicate) to perform only inserts."
@@ -174,8 +174,7 @@
     :validate [(partial every? #{:pause :kill :partition :clock})
                "Faults must be pause, kill, partition, clock, or member, or the special faults all or none."]]
 
-   [nil "--maria-ci-url URL" "The HTTP URL of a MariaDB CI build directory, e.g. https://ci.mariadb.org/43813. If the --db flag is `maria`, this is used to install a specific version of MariaDB."
-    :default "https://ci.mariadb.org/43813"]
+   [nil "--maria-ci-url URL" "The HTTP URL of a MariaDB CI build directory, e.g. https://ci.mariadb.org/43813. If the --db flag is `maria`, this is used to install a specific version of MariaDB."]
 
    [nil "--maria-package NAME" "The Debian package name we should install for mariadb. Note that Maria package names themselves include version strings!"
     :default "mariadb-server"]
