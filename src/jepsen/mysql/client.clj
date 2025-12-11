@@ -107,6 +107,11 @@
           (if (re-find #"Rollback failed handling" (.getMessage e#))
             (assoc ~op :type :info, :error :rollback-failed)
             (throw+ e#)))
+        (catch java.sql.SQLException e#
+          (condp re-find (.getMessage e#)
+            #"Record has changed since last read"
+            (assoc ~op :type :fail, :error :record-changed-since-last-read)
+            (throw+ e#)))
         (catch SQLNonTransientConnectionException e#
           (condp re-find (.getMessage e#)
             #"unexpected end of stream"

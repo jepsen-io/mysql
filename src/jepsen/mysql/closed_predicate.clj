@@ -113,11 +113,16 @@
 (defrecord Client [node conn initialized?]
   client/Client
   (open! [this test node]
-    (let [c (c/open test node)]
-      (assoc this
-             :node          node
-             :conn          c
-             :initialized?  (atom false))))
+    (try
+      (let [c (c/open test node)]
+        (assoc this
+               :node          node
+               :conn          c
+               :initialized?  (atom false)))
+      (catch Throwable t
+        ; Don't spin too fast here; we'll create a zillion unusable test keys
+        (Thread/sleep 2000)
+        (throw t))))
 
   (setup! [_ test]
     (c/with-logging test [conn conn]
@@ -246,6 +251,28 @@
           ; Gotta wait
           this)))))
 
+(defrecord WhenOkGen [pred then]
+  gen/Generator
+  (op [this test ctx]
+    (if pred
+      ; Emit one op thing from `op`
+			(when-let [[op gen'] (gen/op pred test ctx)]
+        [op (WhenOkGen. nil then)])
+      ; Otherwise, wait
+      [:pending this]))
+
+  (update [this test ctx event]
+    (case (:type event)
+      :invoke this          ; Not relevant
+      :ok     then          ; Good to go
+      (:info, :fail) nil))) ; No dice!
+
+(defn when-ok
+  "Takes a generator of a single operation which should succeed, and a
+  generator to evaluate if the first generator's op succeeds with :type :ok"
+  [pred then]
+  (WhenOkGen. pred then))
+
 (defn gen
   "Takes CLI options and constructs a generator which emits an init op to the
   primary, then a mix of transactions."
@@ -254,17 +281,19 @@
     ; Unfurl into a random init op and a lazy seq of txns
     (let [n             (count (:nodes opts))
           [init & txns] (cp/gen opts)]
-      ; Construct a replacement generator...
-      (gen/phases
+      (when-ok
         ; Only primary-connected threads can perform the initial write
         (gen/on-threads (fn primary? [thread]
                           (= 0 (mod thread n)))
                         init)
-        ; Then wait until every thread sees it. We're implicitly assuming
-        ; session consistency here.
-        (gen/each-thread (await-init-gen init))
-        ; Then do normal transactions.
-        (ro-gen txns)))))
+        ; If that init op succeeds, we...
+        (gen/phases
+          ; Wait until every thread sees it. We're implicitly assuming session
+          ; consistency here; if this fails to hold, we can back off to
+          ; insert-only tests.
+          (gen/each-thread (await-init-gen init))
+          ; Then do normal transactions.
+          (ro-gen txns))))))
 
 (defn gen-112446
   "A simpler, hardcoded generator to minimally reproduce a fractured reads bug."

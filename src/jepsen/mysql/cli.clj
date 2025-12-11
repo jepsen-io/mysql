@@ -154,8 +154,8 @@
     :default 1
     :parse-fn parse-long]
 
-   [nil "--innodb-snapshot-isolation" "If set, enables INNODB_SNAPSHOT_ISOLATION, a new setting which makes MariaDB do SI, rather than the weird read-committed+ thing it used to do at REPEATABLE READ."
-    :default false]
+   [nil "--[no-]innodb-snapshot-isolation" "If set, enables INNODB_SNAPSHOT_ISOLATION, a new setting which makes MariaDB do SI, rather than the weird read-committed+ thing it used to do at REPEATABLE READ."
+    :default true]
 
    [nil "--insert-only" "If set, tells certain workloads (e.g. closed-predicate) to perform only inserts."
     :id :insert-only?]
