@@ -174,11 +174,6 @@
     :validate [(partial every? #{:pause :kill :partition :clock})
                "Faults must be pause, kill, partition, clock, or member, or the special faults all or none."]]
 
-   [nil "--maria-ci-url URL" "The HTTP URL of a MariaDB CI build directory, e.g. https://ci.mariadb.org/43813. If the --db flag is `maria`, this is used to install a specific version of MariaDB."]
-
-   [nil "--maria-package NAME" "The Debian package name we should install for mariadb. Note that Maria package names themselves include version strings!"
-    :default "mariadb-server"]
-
    [nil "--max-txn-length NUM" "Maximum number of operations in a transaction."
     :default  4
     :parse-fn parse-long

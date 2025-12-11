@@ -293,7 +293,9 @@
           ; insert-only tests.
           (gen/each-thread (await-init-gen init))
           ; Then do normal transactions.
-          (ro-gen txns))))))
+          ;(ro-gen txns))
+          txns
+          )))))
 
 (defn gen-112446
   "A simpler, hardcoded generator to minimally reproduce a fractured reads bug."
