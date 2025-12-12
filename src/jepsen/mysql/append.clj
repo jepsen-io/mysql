@@ -121,7 +121,11 @@
 (defrecord Client [node conn initialized?]
   client/Client
   (open! [this test node]
-    (let [c (c/open test node)]
+    (let [c (try (c/open test node)
+                 (catch Throwable t
+                   ; Slow down reconnects
+                   (Thread/sleep 1000)
+                   (throw t)))]
       (assoc this
              :node          node
              :conn          c
