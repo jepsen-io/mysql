@@ -40,11 +40,17 @@
 
 (def all-workloads
   "A collection of workloads we run by default."
-  [])
+  [:append
+   :closed-predicate])
 
 (def all-nemeses
   "Combinations of nemeses for tests"
-  [[]])
+  [[]
+   [:pause]
+   [:kill]
+   [:partition]
+   [:clock]
+   [:pause :kill :partition :clock]])
 
 (def special-nemeses
   "A map of special nemesis names to collections of faults"
@@ -206,7 +212,6 @@
 
    ["-w" "--workload NAME" "What workload should we run?"
     :parse-fn keyword
-    :missing  (str "Must specify a workload: " (cli/one-of workloads))
     :validate [workloads (cli/one-of workloads)]]
    ])
 
@@ -215,7 +220,7 @@
   [opts]
   (let [nemeses   (if-let [n (:nemesis opts)] [n] all-nemeses)
         workloads (if-let [w (:workload opts)] [w] all-workloads)]
-    (for [n nemeses, w workloads, i (range (:test-count opts))]
+    (for [i (range (:test-count opts)), n nemeses, w workloads]
       (mysql-test (assoc opts :nemesis n :workload w)))))
 
 (defn opt-fn
