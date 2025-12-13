@@ -1,16 +1,18 @@
 (ns jepsen.mysql.cli
   "Command-line entry point for MySQL tests."
+  (:gen-class)
   (:require [clojure [string :as str]]
             [clojure.tools.logging :refer [info warn]]
-            [jepsen [checker :as checker]
-             [cli :as cli]
-             [control :as c]
-             [db :as jepsen.db]
-             [generator :as gen]
-             [nemesis :as nemesis]
-             [os :as os]
-             [tests :as tests]
-             [util :as util]]
+            [jepsen [antithesis :as a]
+                    [checker :as checker]
+                    [cli :as cli]
+                    [control :as c]
+                    [db :as jepsen.db]
+                    [generator :as gen]
+                    [nemesis :as nemesis]
+                    [os :as os]
+                    [tests :as tests]
+                    [util :as util]]
             [jepsen.checker.timeline :as timeline]
             [jepsen.nemesis.combined :as nc]
             [jepsen.os.debian :as debian]
@@ -77,7 +79,7 @@
 (defn mysql-test
   "Given options from the CLI, constructs a test map."
   [opts]
-  (let [workload-name (:workload opts)
+  (let [workload-name (:workload opts :append)
         workload ((workloads workload-name) opts)
         db       ((db-types (:db opts)) opts)
         os       (case (:db opts)
@@ -95,39 +97,63 @@
                       :partition {:targets [:one :majority]}
                       :pause {:targets [:one]}
                       :kill  {:targets [:one :all]}
-                      :interval (:nemesis-interval opts)}))]
-    (merge tests/noop-test
-           opts
-           {:name (str (name (:db opts))
-                       " " (name workload-name)
-                       (when (:lazyfs opts) " lazyfs")
-                       " binlog=" (name (:binlog-format opts))
-                       (when (:innodb-snapshot-isolation opts)
-                         " snapshot-isolation")
-                       " " (short-isolation (:isolation opts)) "("
-                       (short-isolation (:expected-consistency-model opts)) ") "
-                       (str/join "," (map name (:nemesis opts))))
-            :ssh ssh
-            :os os
-            :db db
-            :checker (checker/compose
-                       {:perf (checker/perf
-                                {:nemeses (:perf nemesis)})
-                        :clock (checker/clock-plot)
-                        :stats (checker/stats)
-                        :exceptions (checker/unhandled-exceptions)
-                        :timeline (timeline/html)
-                        :workload (:checker workload)})
-            :client    (:client workload)
-            :nemesis   (:nemesis nemesis nemesis/noop)
-            :generator (->> (:generator workload)
-                            (gen/stagger (/ (:rate opts)))
-                            (gen/nemesis (:generator nemesis))
-                            (gen/time-limit (:time-limit opts)))})))
+                      :interval (:nemesis-interval opts)}))
+        gen (->> (:generator workload)
+                 (gen/stagger (/ (:rate opts)))
+                 (gen/nemesis (:generator nemesis))
+                 (gen/time-limit (:time-limit opts)))
+        gen (if (a/antithesis?)
+              (a/early-termination-generator
+                {:interval (:antithesis-interval opts)} gen)
+              (gen/time-limit (:time-limit opts) gen))]
+    (-> tests/noop-test
+        (merge
+          opts
+          {:name (str (name (:db opts))
+                      " " (name workload-name)
+                      (when (:lazyfs opts) " lazyfs")
+                      " binlog=" (name (:binlog-format opts))
+                      (when (:innodb-snapshot-isolation opts)
+                        " snapshot-isolation")
+                      " " (short-isolation (:isolation opts)) "("
+                      (short-isolation (:expected-consistency-model opts)) ") "
+                      (str/join "," (map name (:nemesis opts))))
+           :ssh ssh
+           :os os
+           :db db
+           :checker (checker/compose
+                      {:perf (checker/perf
+                               {:nemeses (:perf nemesis)})
+                       :clock (checker/clock-plot)
+                       :stats (checker/stats)
+                       :exceptions (checker/unhandled-exceptions)
+                       :timeline (timeline/html)
+                       :workload (:checker workload)})
+           :client    (a/client (:client workload))
+           :nemesis   (if (a/antithesis?)
+                        nemesis/noop
+                        (:nemesis nemesis nemesis/noop))
+           :generator gen})
+        a/test)))
+
+(defn antithesis-test
+  "Wraps mysql-test, allowing us to force antithesis mode"
+  [opts]
+  (if (:antithesis opts)
+    (with-redefs [a/antithesis? (constantly true)]
+      (mysql-test opts))
+    (mysql-test opts)))
 
 (def cli-opts
   "Command line options"
-  [[nil "--binlog-format FORMAT" "What binlog format should we use?"
+  [[nil "--antithesis" "Forces Antithesis mode. Useful for debugging in local docker."]
+
+   [nil "--antithesis-interval OP-COUNT" "Antithesis can terminate the test after each block of this many operations."
+    :default 100
+    :parse-fn parse-long
+    :validate [pos? "Must be positive"]]
+
+   [nil "--binlog-format FORMAT" "What binlog format should we use?"
     :default :mixed
     :parse-fn keyword
     :validate [#{:mixed :statement :row} "must be statement, mixed, or row"]]
@@ -199,7 +225,7 @@
     :parse-fn parse-long]
 
    ["-r" "--rate HZ" "Approximate request rate, in hz"
-    :default 100
+    :default  1000
     :parse-fn read-string
     :validate [pos? "Must be a positive number."]]
 
@@ -221,7 +247,7 @@
   (let [nemeses   (if-let [n (:nemesis opts)] [n] all-nemeses)
         workloads (if-let [w (:workload opts)] [w] all-workloads)]
     (for [i (range (:test-count opts)), n nemeses, w workloads]
-      (mysql-test (assoc opts :nemesis n :workload w)))))
+      (antithesis-test (assoc opts :nemesis n :workload w)))))
 
 (defn opt-fn
   "Transforms CLI options before execution."
@@ -255,7 +281,7 @@
   "Handles command line arguments. Can either run a test, or a web server for
   browsing results."
   [& args]
-  (cli/run! (merge (cli/single-test-cmd {:test-fn  mysql-test
+  (cli/run! (merge (cli/single-test-cmd {:test-fn  antithesis-test
                                          :opt-spec cli-opts
                                          :opt-fn   opt-fn})
                    (cli/test-all-cmd {:tests-fn all-tests

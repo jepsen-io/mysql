@@ -1,0 +1,78 @@
+version: '3.9'
+# I have no idea what I'm doing
+networks:
+  antithesis-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.10/24
+services:
+  control:
+    container_name: control
+    hostname: control
+    image: jepsen-mariadb-galera-control:latest
+    init: true
+    networks:
+      antithesis-net:
+        ipv4_address: 10.0.0.100
+    volumes:
+      - ./volumes/store:/opt/jepsen-test/store
+    depends_on:
+      n1:
+        condition: service_healthy
+      n2:
+        condition: service_healthy
+      n3:
+        condition: service_healthy
+  # Note that n1 is special; the first node others join to
+  n1:
+    container_name: n1
+    hostname: n1
+    image: jepsen-mariadb-galera-db-bootstrap:latest
+    command:
+      - "--bind-address=0.0.0.0"
+      - "--wsrep-cluster-address=gcomm://n1,n2,n3"
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ntlp | grep :4567"]
+      interval: 1s
+      timeout: 120s
+    init: true
+    networks:
+      antithesis-net:
+        ipv4_address: 10.0.0.11
+  n2:
+    container_name: n2
+    hostname: n2
+    image: jepsen-mariadb-galera-db:latest
+    command:
+      - "--bind-address=0.0.0.0"
+      - "--wsrep-cluster-address=gcomm://n1,n2,n3"
+    #depends_on:
+    #  n1:
+    #    condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ntlp | grep :3306"]
+      interval: 5s
+      timeout: 120s
+    init: true
+    networks:
+      antithesis-net:
+        ipv4_address: 10.0.0.12
+  n3:
+    container_name: n3
+    hostname: n3
+    image: jepsen-mariadb-galera-db:latest
+    command:
+      - "--bind-address=0.0.0.0"
+      - "--wsrep-cluster-address=gcomm://n1,n2,n3"
+    #depends_on:
+    #  n1:
+    #    condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ntlp | grep :3306"]
+      interval: 5s
+      timeout: 120s
+    init: true
+    networks:
+      antithesis-net:
+        ipv4_address: 10.0.0.13

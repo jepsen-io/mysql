@@ -1,0 +1,32 @@
+# Adapted from the version installed by MariaDB at /etc/mariadb.conf.d/60-galera.cnf
+
+[galera]
+wsrep_cluster_name       = "jepsen cluster"
+
+
+# Mandatory settings
+wsrep_provider           = /usr/lib/galera/libgalera_smm.so
+binlog_format            = ROW
+wsrep_on                 = ON
+default_storage_engine   = InnoDB
+
+# Allow server to accept connections on all interfaces.
+bind-address = 0.0.0.0
+
+# Performance related settings
+innodb_autoinc_lock_mode = 2
+innodb_flush_log_at_trx_commit = 0
+# https://mariadb.com/docs/galera-cluster/galera-management/configuration/configuring-mariadb-galera-cluster#performance-related-options
+# says we should increase this to 4 per core
+wsrep_slave_threads = 4
+
+# Per
+# https://mariadb.com/docs/galera-cluster/galera-management/configuration/configuring-auto-eviction#configuration.
+# OTOH I'm seeing errors like "Failed to initialize parameter 'evs.auto_evict',
+# value 3" in the logs on bootstrap, so... maybe this doesn't work? The MariaDB
+# docs are frustrating on this. A good chunk of the links for critical
+# information go to private GitBook URLs nobody else can access, and what's
+# actually readable is... very confusing. AFAICT this makes bootstrap *core
+# dump*, which... how...
+#wsrep_provider_options = "evs.auto_evict=3"
+#wsrep_provider_options = "evs.install_timeout=PT20S;evs.max_install_timeouts=5"

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Builds docker images locally
+
+set -e
+source ./env
+
+# Deps
+sudo apt install -y docker-compose
+
+# Build jar
+cd "$PROJECT_DIR"
+LEIN_SNAPSHOTS_IN_RELEASE=TRUE lein uberjar
+mv target/*-standalone.jar "$ANTITHESIS_DIR/control/jepsen-test.jar"
+
+# Build docker images
+cd "$ANTITHESIS_DIR/control"
+sudo docker build -t "jepsen-$DB_NAME-control" .
+
+cd "$ANTITHESIS_DIR/db"
+sudo docker build -t "jepsen-$DB_NAME-db" .
+
+cd "$ANTITHESIS_DIR/db-bootstrap"
+sudo docker build -t "jepsen-$DB_NAME-db-bootstrap" .
+
+cd "$ANTITHESIS_DIR/config"
+sudo docker build -t "jepsen-$DB_NAME-config" .
