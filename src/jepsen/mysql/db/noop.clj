@@ -16,7 +16,7 @@
             [jepsen.mysql [client :as mc]]
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
-            [slingshot.slingshot :refer [try+ throw+]]))
+            [clj-commons.slingshot :refer [try+ throw+]]))
 
 (defn db
   "Takes CLI options and returns a database."

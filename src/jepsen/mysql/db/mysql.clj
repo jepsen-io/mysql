@@ -15,7 +15,7 @@
             [jepsen.mysql [client :as mc]]
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
-            [slingshot.slingshot :refer [try+ throw+]]))
+            [clj-commons.slingshot :refer [try+ throw+]]))
 
 (def data-dir
   "Where does MySQL store its mutable data files?"

@@ -1,12 +1,13 @@
 (ns jepsen.mysql.client
   "Helper functions for interacting with MySQL clients."
-  (:require [clojure.tools.logging :refer [info warn]]
+  (:require [clojure [pprint :refer [pprint]]]
+            [clojure.tools.logging :refer [info warn]]
             [jepsen [client :as client]
                     [util :as util]]
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql.builder :as sqlb]
-            [slingshot.slingshot :refer [try+ throw+]])
+            [clj-commons.slingshot :refer [try+ throw+]])
   (:import (java.sql Connection
                      SQLNonTransientConnectionException
                      SQLTransactionRollbackException)
@@ -103,14 +104,20 @@
           (assoc ~op :type :fail, :error :rollback))
         (catch MySQLTransactionRollbackException e#
           (assoc ~op :type :fail, :error :rollback))
-        (catch clojure.lang.ExceptionInfo e#
-          (if (re-find #"Rollback failed handling" (.getMessage e#))
+        (catch (and (:rollback ~'%) (:handling ~'%)) e#
+          (condp re-find (:message ~'&throw-context)
+            #"Rollback failed"
             (assoc ~op :type :info, :error :rollback-failed)
+
             (throw+ e#)))
         (catch java.sql.SQLException e#
           (condp re-find (.getMessage e#)
             #"Record has changed since last read"
             (assoc ~op :type :fail, :error :record-changed-since-last-read)
+
+            #"Lock wait timeout exceeded"
+            (assoc ~op :type :fail, :error :lock-wait-timeout-exceeded)
+
             (throw+ e#)))
         (catch SQLNonTransientConnectionException e#
           (condp re-find (.getMessage e#)
@@ -119,5 +126,8 @@
 
             #"Connection is closed"
             (assoc ~op :type :info, :error :connection-closed)
+
+            #"WSREP has not yet prepared node for application use"
+            (assoc ~op :type :fail, :error :wsrep-not-yet-prepared)
 
             (throw+ e#)))))

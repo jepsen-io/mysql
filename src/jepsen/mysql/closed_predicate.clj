@@ -21,7 +21,7 @@
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql.builder :as sqlb]
-            [slingshot.slingshot :refer [try+ throw+]]))
+            [clj-commons.slingshot :refer [try+ throw+]]))
 
 (def default-table-count 3)
 

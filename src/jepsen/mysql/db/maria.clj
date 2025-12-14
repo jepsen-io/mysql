@@ -16,7 +16,7 @@
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
             [org.httpkit.client :as http]
-            [slingshot.slingshot :refer [try+ throw+]]))
+            [clj-commons.slingshot :refer [try+ throw+]]))
 
 (defn configure-repo!
   "Sets up the MariaDB repo on the current node."
