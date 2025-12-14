@@ -110,6 +110,25 @@
             (assoc ~op :type :info, :error :rollback-failed)
 
             (throw+ e#)))
+        (catch SQLNonTransientConnectionException e#
+          (condp re-find (.getMessage e#)
+            #"Socket error"
+            (condp re-find (.getMessage (.getCause e#))
+              #"unexpected end of stream"
+              (assoc ~op :type :info, :error :unexpected-end-of-stream)
+
+              #"Connection is closed"
+              (assoc ~op :type :info, :error :connection-closed)
+
+              #"Connection reset"
+              (assoc ~op :type :info, :error :connection-reset)
+
+              (throw+ e#))
+
+            #"WSREP has not yet prepared node for application use"
+            (assoc ~op :type :fail, :error :wsrep-not-yet-prepared)
+
+            (throw+ e#)))
         (catch java.sql.SQLException e#
           (condp re-find (.getMessage e#)
             #"Record has changed since last read"
@@ -118,16 +137,7 @@
             #"Lock wait timeout exceeded"
             (assoc ~op :type :fail, :error :lock-wait-timeout-exceeded)
 
-            (throw+ e#)))
-        (catch SQLNonTransientConnectionException e#
-          (condp re-find (.getMessage e#)
-            #"unexpected end of stream"
-            (assoc ~op :type :info, :error :unexpected-end-of-stream)
-
-            #"Connection is closed"
-            (assoc ~op :type :info, :error :connection-closed)
-
-            #"WSREP has not yet prepared node for application use"
-            (assoc ~op :type :fail, :error :wsrep-not-yet-prepared)
+            #"Not connected to Primary"
+            (assoc ~op :type :info, :error :not-connected-to-primary)
 
             (throw+ e#)))))
