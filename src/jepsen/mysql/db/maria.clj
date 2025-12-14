@@ -222,8 +222,10 @@ PrivateDevices=false"
 
       db/LogFiles
       (log-files [this test node]
-        {"/var/log/mysql/error.log"                "error.log"
-         "/etc/mysql/mariadb.conf.d/99-jepsen.cnf" "my-jepsen.cnf"})
+        {"/var/lib/mysql/error.log"                       "error.log"
+         "/var/lib/mysql/general.log"                     "general.log"
+         "/etc/mysql/mariadb.conf.d/99-jepsen-galera.cnf" "jepsen-galera.cnf"
+         "/etc/mysql/mariadb.conf.d/90-jepsen.cnf"        "jepsen.cnf"})
 
       db/Kill
       (start! [this test node]
