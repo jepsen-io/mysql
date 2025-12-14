@@ -16,7 +16,7 @@
             [next.jdbc :as j]
             [next.jdbc.result-set :as rs]
             [next.jdbc.sql.builder :as sqlb]
-            [slingshot.slingshot :refer [try+ throw+]]))
+            [clj-commons.slingshot :refer [try+ throw+]]))
 
 (def default-table-count 3)
 
@@ -181,8 +181,9 @@
   (not= 0 (mod (:process op) (count (:nodes test)))))
 
 (defn ro-gen
-  "Nothing stops you from writing to a secondary, which is, uh, exciting. We'll
-  set up our generator to *only* emit reads to any non-primary node."
+  "Nothing in standard MySQL replication stops you from writing to a secondary,
+  which is, uh, exciting. We'll set up our generator to *only* emit reads to
+  any non-primary node."
   [gen]
   (reify gen/Generator
     (update [this test ctx event]
@@ -208,4 +209,6 @@
                           :min-txn-length 1
                           :consistency-models [(:expected-consistency-model opts)]))
       (assoc :client (Client. nil nil nil))
-      (update :generator ro-gen)))
+      ; Galera lets us write anywhere, wooo!
+      ;(update :generator ro-gen)
+      ))
