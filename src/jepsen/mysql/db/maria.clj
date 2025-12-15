@@ -8,7 +8,7 @@
             [jepsen [control :as c]
                     [core :as jepsen]
                     [db :as db]
-                    [util :as util :refer [meh]]]
+                    [util :as util :refer [meh await-fn]]]
             [jepsen.control [net :as cn]
                             [util :as cu]]
             [jepsen.os.debian :as debian]
@@ -107,7 +107,7 @@ PrivateDevices=false"
           c/ssh*
           c/throw-on-nonzero-exit))))
 
-(defn make-db!
+(defn make-db!*
   "Adds a user and DB with remote access."
   [test]
   (info "Making DB")
@@ -128,6 +128,15 @@ PrivateDevices=false"
       (condp re-find (:err e)
         #"database exists" nil
         (throw+ e)))))
+
+(defn make-db!
+  "Like make-db*!, but retries when things aren't ready."
+  [test]
+  (await-fn (partial make-db!* test)
+            {:log-interval 10000
+             :log-message "Waiting to create database"
+             :retry-interval 5000
+             :timeout 300000}))
 
 (defn await-slave-sql-running
   "Run on the secondary to block until slave-sql-running and slave-io-running
