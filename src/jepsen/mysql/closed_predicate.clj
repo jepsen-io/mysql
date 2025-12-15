@@ -121,7 +121,7 @@
                :initialized?  (atom false)))
       (catch Throwable t
         ; Don't spin too fast here; we'll create a zillion unusable test keys
-        (Thread/sleep 2000)
+        (Thread/sleep 1000)
         (throw t))))
 
   (setup! [_ test]
