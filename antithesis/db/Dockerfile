@@ -20,5 +20,15 @@ RUN chown mysql:mysql /run/mysqld
 COPY my.cnf /etc/mysql/mariadb.conf.d/90-jepsen.cnf
 COPY galera.cnf /etc/mysql/mariadb.conf.d/99-jepsen-galera.cnf
 
+# Create tables
+COPY create-tables /usr/local/bin/create-tables
+#RUN chmod +x /usr/local/bin/create-tables
+RUN chown mysql:mysql /usr/local/bin/create-tables
+
+# Wrapper script
+COPY bootstrap-wrapper /usr/local/bin/bootstrap-wrapper
+#RUN chmod +x /usr/local/bin/bootstrap-wrapper
+RUN chown mysql:mysql /usr/local/bin/bootstrap-wrapper
+
 USER mysql
-ENTRYPOINT ["/usr/sbin/mariadbd"]
+ENTRYPOINT ["/usr/local/bin/bootstrap-wrapper"]

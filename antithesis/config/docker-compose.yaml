@@ -28,7 +28,7 @@ services:
   n1:
     container_name: n1
     hostname: n1
-    image: jepsen-mariadb-galera-db-bootstrap:latest
+    image: jepsen-mariadb-galera-db:latest
     command:
       - "--bind-address=0.0.0.0"
       - "--wsrep-cluster-address=gcomm://n1,n2,n3"

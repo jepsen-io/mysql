@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# We want n1, and *only* n1, to launch with the --wsrep-new-cluster option, but
+# only on the first launch.
+
+RAN_FILE="/var/lib/mysql/already-bootstrapped"
+LOG="/var/lib/mysql/out.log"
+PRIMARY="n1"
+CMD="/usr/sbin/mariadbd"
+BOOTSTRAP_OPTS="--wsrep-new-cluster"
+CREATE_TABLES="/usr/local/bin/create-tables"
+
+HOST="$(hostname)"
+if [ ! "$HOST" = "$PRIMARY" ] || [ -f "$SRAN_FILE" ]; then
+  # Launch MariaDB
+  exec $CMD "$@" | tee "$LOG"
+else
+  # Don't do this again
+  touch "$RAN_FILE"
+  # In background, go and create the initial table
+  $CREATE_TABLES > /var/lib/mysql/create-tables.log &
+  $CMD "$BOOTSTRAP_OPTS" "$@" | tee "$LOG"
+fi

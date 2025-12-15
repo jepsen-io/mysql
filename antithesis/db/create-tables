@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# On n1, as a part of bootstra, we spawn this program which creates the initial
+# tables.
+
+LOG="/var/lib/mysql/error.log"
+READY="ready for connections."
+
+echo "Waiting for $LOG to contain '$READY'"
+while sleep 1
+do
+  if fgrep --quiet "$READY" "$LOG"
+    then
+    echo "MariaDB ready"
+
+    # Create DB
+    echo "CREATE DATABASE jepsen;
+    CREATE USER 'jepsen'@'%' IDENTIFIED BY 'jepsenpw';
+    GRANT ALL PRIVILEGES ON jepsen.* TO 'jepsen'@'%';
+    FLUSH PRIVILEGES;\n" | /usr/bin/mariadb --user=mysql
+
+    echo "Database created"
+    exit 0
+  fi
+done

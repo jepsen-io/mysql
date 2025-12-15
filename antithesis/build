@@ -20,8 +20,5 @@ sudo docker build -t "jepsen-$DB_NAME-control" .
 cd "$ANTITHESIS_DIR/db"
 sudo docker build -t "jepsen-$DB_NAME-db" .
 
-cd "$ANTITHESIS_DIR/db-bootstrap"
-sudo docker build -t "jepsen-$DB_NAME-db-bootstrap" .
-
 cd "$ANTITHESIS_DIR/config"
 sudo docker build -t "jepsen-$DB_NAME-config" .
