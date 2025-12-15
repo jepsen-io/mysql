@@ -1,12 +1,28 @@
 #!/bin/bash
 
-# Builds docker images locally
+# Builds the test suite and docker images locally.
 
 set -e
 source ./env
 
-# Deps
-sudo apt install -y docker-compose
+# Install Docker. I think Debian's built-in versions are too old to know about
+# health checks?
+if ! command -v docker; then
+  # From https://docs.docker.com/engine/install/debian/#install-using-the-repository
+  sudo apt install -y ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+  sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+  sudo apt update
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+fi
 
 # Build jar
 cd "$PROJECT_DIR"

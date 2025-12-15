@@ -1,11 +1,10 @@
-version: '3.9'
 # I have no idea what I'm doing
 networks:
   antithesis-net:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.0.0.10/24
+        - subnet: 10.0.0.0/24
 services:
   control:
     container_name: control
@@ -47,9 +46,9 @@ services:
     command:
       - "--bind-address=0.0.0.0"
       - "--wsrep-cluster-address=gcomm://n1,n2,n3"
-    #depends_on:
-    #  n1:
-    #    condition: service_healthy
+    depends_on:
+      n1:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "ss -ntlp | grep :3306"]
       interval: 5s
@@ -65,9 +64,9 @@ services:
     command:
       - "--bind-address=0.0.0.0"
       - "--wsrep-cluster-address=gcomm://n1,n2,n3"
-    #depends_on:
-    #  n1:
-    #    condition: service_healthy
+    depends_on:
+      n1:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "ss -ntlp | grep :3306"]
       interval: 5s
