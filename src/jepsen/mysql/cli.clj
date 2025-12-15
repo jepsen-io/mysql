@@ -217,7 +217,7 @@
     :validate [pos? "Must be a positive integer."]]
 
    [nil "--nemesis-interval SECS" "Roughly how long between nemesis operations."
-    :default 5
+    :default 20
     :parse-fn read-string
     :validate [pos? "Must be a positive number."]]
 
