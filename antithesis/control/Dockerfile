@@ -18,5 +18,7 @@ ENTRYPOINT java -Djava.awt.headless=true -Xmx8g \
   test \
   --antithesis \
   --nodes n1,n2,n3 \
+  --workload append \
   --concurrency 6n \
-  --workload append
+  --isolation repeatable-read \
+  --expected-consistency-model snapshot-isolation
