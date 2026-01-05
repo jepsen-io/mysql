@@ -212,7 +212,7 @@
           ; We allow :unknown, e.g. for empty histories, because Antithesis is
           ; going to drive us into this corner all the time
           (antithesis/assert-always (not (false? (:valid? res)))
-                                    "elle valid or unlnown"
+                                    "elle valid or unknown"
                                     res)
           ; And we want some to pass
           (antithesis/assert-sometimes (true? (:valid? res))
