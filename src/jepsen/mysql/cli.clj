@@ -13,6 +13,7 @@
                     [os :as os]
                     [tests :as tests]
                     [util :as util]]
+            [jepsen.antithesis.composer :as ac]
             [jepsen.checker.timeline :as timeline]
             [jepsen.nemesis.combined :as nc]
             [jepsen.os.debian :as debian]
@@ -100,11 +101,9 @@
                       :interval (:nemesis-interval opts)}))
         gen (->> (:generator workload)
                  (gen/stagger (/ (:rate opts)))
-                 (gen/nemesis (:generator nemesis))
-                 (gen/time-limit (:time-limit opts)))
+                 (gen/nemesis (:generator nemesis)))
         gen (if (a/antithesis?)
-              (a/early-termination-generator
-                {:interval (:antithesis-interval opts)} gen)
+              (ac/main-gen gen)
               (gen/time-limit (:time-limit opts) gen))]
     (-> tests/noop-test
         (merge
@@ -288,5 +287,8 @@
                                       :opt-spec cli-opts
                                       :opt-fn   opt-fn})
                    (cli/serve-cmd)
+                   (ac/antithesis-cmd {:test-fn  antithesis-test
+                                      :opt-spec cli-opts
+                                      :opt-fn   opt-fn})
                    wipe-command)
             args))
