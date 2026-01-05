@@ -216,7 +216,7 @@
                                     res)
           ; And we want some to pass
           (antithesis/assert-sometimes (true? (:valid? res))
-                                       "elle velid"
+                                       "elle valid"
                                        res)
           res)))
     checker))
