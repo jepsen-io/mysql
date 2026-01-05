@@ -5,11 +5,12 @@
                      [string :as str]]
             [dom-top.core :refer [loopr with-retry]]
             [elle.core :as elle]
-            [jepsen [checker :as checker]
-             [client :as client]
-             [core :as jepsen]
-             [generator :as gen]
-             [util :as util :refer []]]
+            [jepsen [antithesis :as antithesis]
+                    [checker :as checker]
+                    [client :as client]
+                    [core :as jepsen]
+                    [generator :as gen]
+                    [util :as util :refer []]]
             [jepsen.checker.timeline :as timeline]
             [jepsen.tests.cycle.append :as append]
             [jepsen.mysql [client :as c]]
@@ -200,6 +201,26 @@
               true
               [op (ro-gen gen')])))))
 
+(defn antithesis-checker
+  "Wraps the normal Elle checker in one that allows unknown outcomes, for
+  Antithesis."
+  [checker]
+  (if (antithesis/antithesis?)
+    (reify checker/Checker
+      (check [this test history opts]
+        (let [res (checker/check checker test history opts)]
+          ; We allow :unknown, e.g. for empty histories, because Antithesis is
+          ; going to drive us into this corner all the time
+          (antithesis/assert-always (not (false? (:valid? res)))
+                                    "elle valid or unlnown"
+                                    res)
+          ; And we want some to pass
+          (antithesis/assert-sometimes (true? (:valid? res))
+                                       "elle velid"
+                                       res)
+          res)))
+    checker))
+
 (defn workload
   "A list append workload."
   [opts]
@@ -211,4 +232,5 @@
       (assoc :client (Client. nil nil nil))
       ; Galera lets us write anywhere, wooo!
       ;(update :generator ro-gen)
+      (update :checker antithesis-checker)
       ))
