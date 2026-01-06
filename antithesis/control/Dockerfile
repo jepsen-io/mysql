@@ -1,7 +1,7 @@
 FROM eclipse-temurin:21-alpine
 
 # Install prereqs
-RUN apk add git gnuplot graphviz grep
+RUN apk add bash git gnuplot graphviz grep
 
 # Install test
 WORKDIR /opt/jepsen-test
