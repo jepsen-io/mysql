@@ -95,9 +95,9 @@
                      {:db db
                       :nodes (:nodes opts)
                       :faults (:nemesis opts)
-                      :partition {:targets [:one :majority]}
-                      :pause {:targets [:one]}
-                      :kill  {:targets [:one :all]}
+                      :partition {:targets [:one :majority :majority-ring]}
+                      :pause {:targets [:one :majority :all]}
+                      :kill  {:targets [:one :majority :all]}
                       :interval (:nemesis-interval opts)}))
         gen (->> (:generator workload)
                  (gen/stagger (/ (:rate opts)))
