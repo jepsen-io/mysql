@@ -74,16 +74,6 @@ PrivateDevices=false"
                       :commit-order "COMMIT_ORDER"
                       :writeset "WRITESET"
                       :writeset-session "WRITESET_SESSION"))
-       ; This option doesn't exist in Maria AFAICT
-       (str/replace #"replica-preserve-commit-order.*?\n" "")
-       ; Followers are super-read-only to prevent updates from
-       ; accidentally arriving. Note that if we *don't* do this, mysql
-       ; will murder itself by trying to run replication transactions at
-       ; the same time as read queries and letting the read queries take
-       ; locks, breaking the replication update thread entirely? This
-       ; might be the worst system
-       ; I've ever worked on.
-       (str/replace #".*%SUPER_READ_ONLY%.*" "")
        (str/replace #"%INNODB_FLUSH_LOG_AT_TRX_COMMIT%"
                     (str (:innodb-flush-log-at-trx-commit test)))
        (cu/write-file! "/etc/mysql/mariadb.conf.d/90-jepsen.cnf"))
@@ -192,6 +182,12 @@ PrivateDevices=false"
   (when (= (jepsen/primary test) node)
     (c/su
       (info "Bootstrapping first node")
+      ; This will sometimes explode if it doesn't find an existing
+      ; /run/mysql or /run/mysqld. Fun!
+      (c/exec :mkdir :-p "/run/mysql")
+      (c/exec :mkdir :-p "/run/mysqld")
+      (c/exec :chown "mysql:mysql" "/run/mysql")
+      (c/exec :chown "mysql:mysql" "/run/mysqld")
       (c/exec :galera_new_cluster))))
 
 (defn db
@@ -206,8 +202,8 @@ PrivateDevices=false"
         (configure! test node)
 
         ; Create internal tables
-        (info "mysql_install_db")
-        (c/sudo :mysql (c/exec :mysql_install_db))
+        (info "Install DB")
+        (c/sudo :mysql (c/exec :mariadb-install-db))
 
         ; Bootstrap
         (bootstrap-primary! test node)
