@@ -95,7 +95,7 @@
                      {:db db
                       :nodes (:nodes opts)
                       :faults (:nemesis opts)
-                      :partition {:targets [:one :majority :majority-ring]}
+                      :partition {:targets [:one :majority :majorities-ring]}
                       :pause {:targets [:one :majority :all]}
                       :kill  {:targets [:one :majority :all]}
                       :interval (:nemesis-interval opts)}))
