@@ -77,6 +77,15 @@
    :read-committed      "RC"
    :read-uncommitted    "RU"})
 
+(defn stats-checker
+  "A version of the Jepsen stats checker that's always valid. Antithesis
+  generates tiny histories."
+  []
+  (reify checker/Checker
+    (check [this test history opts]
+      (assoc (checker/check (checker/stats) test history opts)
+             :valid? true))))
+
 (defn mysql-test
   "Given options from the CLI, constructs a test map."
   [opts]
@@ -124,7 +133,7 @@
                       {:perf (checker/perf
                                {:nemeses (:perf nemesis)})
                        :clock (checker/clock-plot)
-                       :stats (checker/stats)
+                       :stats (stats-checker)
                        :exceptions (checker/unhandled-exceptions)
                        :timeline (timeline/html)
                        :workload (:checker workload)})
