@@ -8,7 +8,7 @@
             [jepsen [control :as c]
                     [core :as jepsen]
                     [db :as db]
-                    [util :as util :refer [meh await-fn]]]
+                    [util :as util :refer [meh await-fn timeout]]]
             [jepsen.control [net :as cn]
                             [util :as cu]]
             [jepsen.os.debian :as debian]
@@ -192,6 +192,11 @@ PrivateDevices=false"
       (c/exec :chown "mysql:mysql" "/run/mysqld")
       (c/exec :galera_new_cluster))))
 
+(defn start!
+  "Starts MariaDB, with no timeout."
+  []
+  (c/su (c/exec :systemctl :start :mariadb)))
+
 (defn db
   "A MySQL database. Takes CLI options."
   [opts]
@@ -212,7 +217,7 @@ PrivateDevices=false"
         (jepsen/synchronize test)
 
         ; Add remaining nodes
-        (db/start! this test node)
+        (start!)
 
         ; And create our DB
         (make-db! test)
@@ -236,7 +241,9 @@ PrivateDevices=false"
 
       db/Kill
       (start! [this test node]
-        (c/su (c/exec :systemctl :start :mariadb)))
+        ; This tends to time out often :-/
+        (timeout 10000 (throw+ {:type :restart-timed-out})
+                 (start!)))
 
       (kill! [this test node]
         (c/su (cu/grepkill! "mariadbd")

@@ -10,7 +10,7 @@
                     [client :as client]
                     [core :as jepsen]
                     [generator :as gen]
-                    [util :as util :refer []]]
+                    [util :as util :refer [timeout]]]
             [jepsen.checker.timeline :as timeline]
             [jepsen.tests.cycle.append :as append]
             [jepsen.mysql [client :as c]]
@@ -151,15 +151,16 @@
       (c/set-transaction-isolation! conn (:isolation test)))
 
     (c/with-errors op
-      (let [txn       (:value op)
-            use-txn?  (< 1 (count txn))
-            txn'      (if use-txn?
-                      ;(if true
-                        (j/with-transaction [t conn
-                                             {:isolation (:isolation test)}]
-                          (mapv (partial mop! t test true) txn))
-                        (mapv (partial mop! conn test false) txn))]
-        (assoc op :type :ok, :value txn'))))
+      (timeout 10000 (throw+ {:type :timeout})
+               (let [txn       (:value op)
+                     use-txn?  (< 1 (count txn))
+                     txn'      (if use-txn?
+                                 ;(if true
+                                 (j/with-transaction [t conn
+                                                      {:isolation (:isolation test)}]
+                                   (mapv (partial mop! t test true) txn))
+                                 (mapv (partial mop! conn test false) txn))]
+                 (assoc op :type :ok, :value txn')))))
 
   (teardown! [_ test])
 
