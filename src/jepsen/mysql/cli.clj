@@ -181,8 +181,8 @@
     :default nil
     :parse-fn keyword]
 
-   [nil "--innodb-flush-log-at-trx-commit SETTING" "0 for write+flush n seconds, 1 for every txn commit, 2 for write at commit, flush every ns econds."
-    :default 1
+   [nil "--innodb-flush-log-at-trx-commit SETTING" "0 for write+flush n seconds, 1 for every txn commit, 2 for write at commit, flush every n seconds. MariaDB recommends 0 for Galera Cluster."
+    :default 0
     :parse-fn parse-long]
 
    [nil "--[no-]innodb-snapshot-isolation" "If set, enables INNODB_SNAPSHOT_ISOLATION, a new setting which makes MariaDB do SI, rather than the weird read-committed+ thing it used to do at REPEATABLE READ."

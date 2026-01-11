@@ -80,6 +80,8 @@ PrivateDevices=false"
   ; And Galera file
   (-> (io/resource "galera.cnf")
       slurp
+      (str/replace #"%INNODB_FLUSH_LOG_AT_TRX_COMMIT%"
+                    (str (:innodb-flush-log-at-trx-commit test)))
       (str/replace #"%CLUSTER_ADDRESS%"
                    (cluster-address test node))
       (cu/write-file! "/etc/mysql/mariadb.conf.d/99-jepsen-galera.cnf")))

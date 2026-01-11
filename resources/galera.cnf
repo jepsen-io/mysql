@@ -15,7 +15,10 @@ bind-address = 0.0.0.0
 
 # Performance related settings
 innodb_autoinc_lock_mode = 2
-innodb_flush_log_at_trx_commit = 0
+# MariaDB's documentation says 0 is "a safer, recommended option with Galera
+# Cluster", but when I asked about data loss on the mailing list, Teem Ollakka
+# says it could cause data loss!
+innodb_flush_log_at_trx_commit = %INNODB_FLUSH_LOG_AT_TRX_COMMIT%
 # https://mariadb.com/docs/galera-cluster/galera-management/configuration/configuring-mariadb-galera-cluster#performance-related-options
 # says we should increase this to 4 per core
 wsrep_slave_threads = 4
