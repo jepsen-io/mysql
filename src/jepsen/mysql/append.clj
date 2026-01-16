@@ -2,6 +2,7 @@
   "A test for transactional list append."
   (:require [clojure.tools.logging :refer [info warn]]
             [clojure [pprint :refer [pprint]]
+                     [set :as set]
                      [string :as str]]
             [dom-top.core :refer [loopr with-retry]]
             [elle.core :as elle]
@@ -209,16 +210,17 @@
   (if (antithesis/antithesis?)
     (reify checker/Checker
       (check [this test history opts]
-        (let [res (checker/check checker test history opts)]
-          ; We allow :unknown, e.g. for empty histories, because Antithesis is
-          ; going to drive us into this corner all the time
-          (antithesis/assert-always (not (false? (:valid? res)))
-                                    "elle valid or unknown"
+        (let [res (checker/check checker test history opts)
+              ; Empty transaction graphs would normally indicate a broken test,
+              ; but Antithesis does this all the time.
+              res (if (empty? (set/difference (set (:anomaly-types res))
+                                              #{:empty-transaction-graph}))
+                    (assoc res :valid? true)
+                    res)]
+          ; We always want to pass
+          (antithesis/assert-always (true? (:valid? res))
+                                    "elle valid"
                                     res)
-          ; And we want some to pass
-          (antithesis/assert-sometimes (true? (:valid? res))
-                                       "elle valid"
-                                       res)
           res)))
     checker))
 
